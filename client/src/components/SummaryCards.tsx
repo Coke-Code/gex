@@ -50,6 +50,7 @@ export default function SummaryCards({ data }: SummaryCardsProps) {
         gap: 12,
         marginLeft: "auto",
         alignItems: "center",
+        flexWrap: "wrap",
       }}
     >
       {/* Flip */}
