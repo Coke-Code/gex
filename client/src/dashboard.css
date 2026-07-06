@@ -48,6 +48,8 @@
 /* ---- Page shell ---- */
 .gex-app {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-page);
   color: var(--text-primary);
   font-family: var(--font);
@@ -307,6 +309,7 @@
 
 /* ---- Main layout ---- */
 .gex-main {
+  flex: 1;
   padding: 10px 16px;
   display: flex;
   gap: 12px;
@@ -363,7 +366,7 @@
 }
 
 .gex-sidebar {
-  flex: 0 0 240px;
+  flex: 0 0 300px;
   display: flex;
   flex-direction: column;
   gap: 6px;
