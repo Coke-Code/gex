@@ -1,6 +1,5 @@
-// GEX Chart — Plotly (GammaFlip style)
-import { useMemo, useState } from "react";
-import Plot from "react-plotly.js";
+// GEX Chart — Plotly from CDN (native API)
+import { useMemo, useState, useEffect, useRef } from "react";
 import { StrikeGex } from "../types";
 
 interface GexChartProps {
@@ -458,15 +457,33 @@ export default function GexChart({
   };
   const config = { displayModeBar: false, responsive: true, scrollZoom: true };
 
+  const plotRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!plotRef.current) return;
+    // 更新 traces 可见性
+    const visible: boolean[] = [showPos, showNeg, showCall, showPut];
+    const data = traces.map((t, i) => {
+      if (i < 4) return { ...t, visible: visible[i] ? true : "legendonly" };
+      return t;
+    });
+    window.Plotly.react(plotRef.current, data, layout, config);
+  }, [traces, layout, config, showPos, showNeg, showCall, showPut]);
+
+  // resize handler
+  useEffect(() => {
+    const handleResize = () => {
+      if (plotRef.current) {
+        window.Plotly.Plots.resize(plotRef.current);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <div style={{ width: "100%" }}>
-      <Plot
-        data={traces}
-        layout={layout}
-        config={config}
-        style={{ width: "100%", height: "100%", minHeight: 320 }}
-        useResizeHandler
-      />
+      <div ref={plotRef} style={{ width: "100%", minHeight: 320 }} />
       <div className="gex-layer-toggles" style={{ marginTop: 4 }}>
         {(
           [
