@@ -1,0 +1,900 @@
+/* ============================================================
+   GEX Studio — GammaFlip-inspired light theme
+   ============================================================ */
+
+:root {
+  --bg-page: #f4f5f7;
+  --bg-surface: #ffffff;
+  --bg-muted: #f8f9fb;
+  --bg-hover: #f0f1f4;
+
+  --border: #e2e5ea;
+  --border-strong: #d0d5dd;
+
+  --text-primary: #1a1d26;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+
+  --green: #16a34a;
+  --green-light: #dcfce7;
+  --green-bar: #22c55e;
+  --green-bg: rgba(34, 197, 94, 0.08);
+
+  --red: #dc2626;
+  --red-light: #fee2e2;
+  --red-bar: #ef4444;
+  --red-bg: rgba(239, 68, 68, 0.08);
+
+  --purple: #7c3aed;
+  --purple-light: #ede9fe;
+  --purple-bar: #8b5cf6;
+
+  --orange: #d97706;
+  --orange-light: #fef3c7;
+
+  --blue: #2563eb;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-pill: 999px;
+
+  --font:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", Consolas, monospace;
+}
+
+/* ---- Page shell ---- */
+.gex-app {
+  min-height: 100vh;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font);
+}
+
+/* ---- Header ---- */
+.gex-header {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  box-shadow: var(--shadow-sm);
+}
+
+.gex-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.gex-logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gex-logo-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, var(--purple), var(--blue));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gex-logo-divider {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.gex-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gex-badge {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.gex-badge--active {
+  background: var(--bg-surface);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.gex-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gex-timer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.gex-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.gex-icon-btn:hover {
+  background: var(--bg-hover);
+}
+
+.gex-refresh-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.gex-refresh-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.gex-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Sub navigation ---- */
+.gex-subnav {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.gex-tabs {
+  display: flex;
+  gap: 0;
+}
+
+.gex-tab {
+  padding: 10px 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.gex-tab:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.gex-tab--active {
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom-color: var(--purple);
+}
+
+.gex-tab:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.gex-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.gex-pill-group {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.gex-pill {
+  padding: 5px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  border-right: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.gex-pill:last-child {
+  border-right: none;
+}
+
+.gex-pill--active {
+  background: var(--bg-muted);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.gex-live-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.gex-live-switch {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--border-strong);
+  position: relative;
+  transition: background 0.2s;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.gex-live-switch--on {
+  background: var(--green);
+}
+
+.gex-live-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.gex-live-switch--on::after {
+  transform: translateX(16px);
+}
+
+/* ---- Main layout ---- */
+.gex-main {
+  padding: 10px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.gex-chart-panel {
+  flex: 1 1 680px;
+  min-width: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.gex-chart-header {
+  padding: 10px 14px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.gex-chart-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gex-index-price {
+  font-weight: 400;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.gex-chart-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.gex-chart-meta .dot-live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  display: inline-block;
+}
+
+.gex-chart-body {
+  padding: 4px 8px 2px;
+}
+
+.gex-sidebar {
+  flex: 0 0 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ---- Info cards ---- */
+.gex-card {
+  position: relative;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.gex-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.gex-card-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gex-card-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.gex-card-info {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  line-height: 1;
+}
+
+.gex-card-delta {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.gex-card-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.gex-card-label--hidden {
+  display: none;
+}
+
+.gex-card-value {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gex-card-sub {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  margin-top: 1px;
+}
+
+.gex-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.gex-card-index {
+  text-align: right;
+}
+
+.gex-card-index-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gex-card-index-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.gex-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  margin-top: 4px;
+}
+
+.gex-status-badge--positive {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.gex-status-badge--negative {
+  background: var(--red-light);
+  color: var(--red);
+}
+
+.gex-status-badge--neutral {
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+}
+
+.gex-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.gex-card-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.gex-sparkline {
+  height: 44px; /* sparkline */
+  margin-top: 6px;
+}
+
+/* ---- Chart controls ---- */
+.gex-chart-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gex-layer-toggles {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.gex-layer-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.gex-layer-btn--on {
+  border-color: currentColor;
+  background: var(--bg-muted);
+  font-weight: 600;
+}
+
+.gex-layer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.gex-zoom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gex-zoom-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.gex-zoom input[type="range"] {
+  width: 120px;
+  accent-color: var(--purple);
+  height: 4px;
+  cursor: pointer;
+}
+
+.gex-zoom-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--purple);
+  min-width: 36px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Marker cards strip ---- */
+.gex-markers {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-muted);
+}
+
+.gex-marker-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  min-width: 110px;
+  cursor: help;
+  transition: box-shadow 0.15s;
+}
+
+.gex-marker-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.gex-marker-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gex-marker-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.gex-marker-strike {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.gex-marker-value {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.gex-marker-desc {
+  font-size: 9px;
+  color: var(--text-muted);
+  padding-left: 28px;
+}
+
+/* ---- Chart section labels ---- */
+.gex-chart-section-label {
+  position: absolute;
+  top: 4px;
+  left: 56px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.gex-chart-section {
+  position: relative;
+}
+
+/* ---- Tooltip ---- */
+.gex-tooltip {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+}
+
+.gex-tooltip-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.gex-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  line-height: 1.6;
+}
+
+/* ---- Footer ---- */
+.gex-footer {
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 10px;
+  text-align: center;
+  background: var(--bg-surface);
+}
+
+/* ---- Loading / empty ---- */
+.gex-empty {
+  height: 460px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.gex-error {
+  color: var(--red);
+  font-size: 12px;
+}
+
+/* ---- Recharts overrides ---- */
+.recharts-cartesian-grid-horizontal line {
+  stroke: #eef0f3;
+}
+
+.recharts-reference-line-line {
+  stroke-opacity: 0.8; /* extra */
+}
+.gex-sparkline--lg {
+  height: 52px;
+}
+.gex-card-value--hidden {
+  display: none;
+}
+.gex-card-footer--bottom {
+  margin-top: auto;
+}
+.gex-timer--btn {
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.gex-timer--btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.gex-timer--btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.gex-timer-icon {
+  display: inline-block;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--purple);
+}
+.gex-icon-dot {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 1.5px solid var(--bg-surface);
+}
+.gex-icon-btn {
+  font-size: 15px;
+  line-height: 1;
+}
+.gex-header-right .gex-icon-btn {
+  min-width: 34px;
+  height: 32px;
+}
+
+/* ============================================================
+   Mobile: ≤768px
+   ============================================================ */
+@media (max-width: 768px) {
+  .gex-header {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .gex-header-left {
+    gap: 8px;
+  }
+
+  .gex-logo {
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  .gex-logo-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    border-radius: 5px;
+  }
+
+  .gex-logo-divider {
+    display: none;
+  }
+
+  .gex-header-right {
+    gap: 6px;
+  }
+
+  .gex-timer {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .gex-live-toggle {
+    font-size: 11px;
+  }
+
+  /* Main: vertical stack */
+  .gex-main {
+    flex-direction: column;
+    padding: 8px 10px;
+    gap: 10px;
+  }
+
+  .gex-chart-panel {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .gex-chart-header {
+    padding: 10px 12px 6px;
+  }
+
+  .gex-chart-title {
+    font-size: 12px;
+  }
+
+  .gex-chart-meta {
+    font-size: 10px;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .gex-chart-body {
+    padding: 4px 6px 2px;
+  }
+
+  /* Sidebar full width */
+  .gex-sidebar {
+    flex: 1 1 auto;
+    width: 100%;
+    gap: 8px;
+  }
+
+  /* Cards */
+  .gex-card {
+    padding: 10px 12px;
+  }
+
+  .gex-card-value {
+    font-size: 20px;
+  }
+
+  .gex-card-delta {
+    font-size: 13px;
+  }
+
+  .gex-card-title {
+    font-size: 11px;
+  }
+
+  /* Layer toggles */
+  .gex-layer-toggles {
+    gap: 4px;
+  }
+
+  .gex-layer-toggles button {
+    padding: 2px 10px;
+    font-size: 10px;
+  }
+
+  /* Key level cards */
+  .gex-marker-card {
+    min-width: 80px;
+    padding: 5px 8px;
+  }
+
+  /* Footer */
+  .gex-footer {
+    padding: 10px 12px;
+    font-size: 10px;
+  }
+
+  /* Plotly chart height */
+  .js-plotly-plot {
+    max-height: 380px !important;
+  }
+}

@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  gex-dashboard:
+    build: .
+    container_name: gex-dashboard
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
