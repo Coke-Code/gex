@@ -157,10 +157,21 @@ export default function GexChart({
   const [showCall, setShowCall] = useState(true);
   const [showPut, setShowPut] = useState(true);
   const [showRegime, setShowRegime] = useState(true);
-  const kl = useMemo(
-    () => findKeyLevels(strikes, underlyingPrice),
-    [strikes, underlyingPrice],
-  );
+  const kl = useMemo(() => {
+    const levels = findKeyLevels(strikes, underlyingPrice);
+    if (flipPoint != null) {
+      levels.push({
+        label: "F",
+        strike: flipPoint,
+        netGex: 0,
+        absGex: 0,
+        color: C.orange,
+        desc: "翻转点",
+        confluent: false,
+      });
+    }
+    return levels;
+  }, [strikes, underlyingPrice, flipPoint]);
   // 固定初始视图 ±17.5%，缩放由 Plotly 原生 scrollZoom 处理（不依赖可变状态）
   const INITIAL_ZOOM_PCT = 35;
   const cd = useMemo(() => {
