@@ -121,7 +121,7 @@ function findKeyLevels(strikes: StrikeGex[], underlyingPrice: number): KL[] {
       netGex: s.netGex,
       absGex: s.absGex,
       color: C.yellow,
-      desc: "伽马支撑",
+      desc: "正伽马峰",
       confluent: false,
     }),
   );
@@ -133,7 +133,7 @@ function findKeyLevels(strikes: StrikeGex[], underlyingPrice: number): KL[] {
       netGex: v.netGex,
       absGex: v.absGex,
       color: C.blue,
-      desc: "波动触发",
+      desc: "波动放大器",
       confluent: false,
     });
 
