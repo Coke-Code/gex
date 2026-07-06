@@ -30,10 +30,10 @@ export default function Dashboard() {
     return () => clearInterval(timer);
   }, [live, refresh, data?.timestamp]);
 
-  const timeStr = data
-    ? new Date(data.timestamp).toISOString().replace("T", " ").slice(0, 19) +
-      " UTC"
-    : new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
+  const timeStr =
+    new Date(data?.timestamp ?? Date.now())
+      .toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false })
+      .replace(/\//g, "-") + " UTC+8";
 
   return (
     <div className="gex-app">
