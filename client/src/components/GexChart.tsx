@@ -1,12 +1,13 @@
 // GEX Chart — Plotly from CDN (native API)
 import { useMemo, useState, useEffect, useRef } from "react";
-import { StrikeGex } from "../types";
+import { StrikeGex, ForwardGammaResult } from "../types";
 
 interface GexChartProps {
   strikes: StrikeGex[];
   underlyingPrice: number;
   flipZone: { low: number; high: number } | null;
   flipPoint: number | null;
+  forwardGamma?: ForwardGammaResult;
 }
 
 const C = {
@@ -31,35 +32,83 @@ interface KL {
   confluent: boolean;
 }
 
-function findKeyLevels(strikes: StrikeGex[], underlyingPrice: number): KL[] {
+function findKeyLevels(
+  strikes: StrikeGex[],
+  underlyingPrice: number,
+  fg?: ForwardGammaResult,
+): KL[] {
   const raw: KL[] = [];
   const sorted = [...strikes].sort((a, b) => a.strike - b.strike);
-  // S: Stability Point — 全局最大正 netGex，交易员在此逢低买逢高卖，波动率最低
-  const sBest = sorted
-    .filter((s) => s.netGex > 0)
-    .sort((a, b) => b.netGex - a.netGex)[0];
-  if (sBest) {
+
+  const minDist = underlyingPrice * 0.01;
+
+  // S: Forward Gamma 预测最大正净GEX — Predicted Max Positive Gamma Strike
+  if (fg?.predictedMaxPositiveStrike && fg.predictedMaxPositiveGEX > 0) {
     raw.push({
       label: "S",
-      strike: sBest.strike,
-      netGex: sBest.netGex,
-      absGex: sBest.absGex,
-      color: C.orange,
-      desc: "最大稳定区",
+      strike: fg.predictedMaxPositiveStrike,
+      netGex: fg.predictedMaxPositiveGEX,
+      absGex: 0,
+      color: "#1a1d26",
+      desc: "预测最大正伽马",
       confluent: false,
     });
+  } else {
+    // 降级：当前快照最大正 netGex
+    const sBest = sorted
+      .filter((s) => s.netGex > 0)
+      .sort((a, b) => b.netGex - a.netGex)[0];
+    if (sBest) {
+      raw.push({
+        label: "S",
+        strike: sBest.strike,
+        netGex: sBest.netGex,
+        absGex: sBest.absGex,
+        color: "#1a1d26",
+        desc: "最大稳定区",
+        confluent: false,
+      });
+    }
   }
 
-  const abss = [...sorted]
-    .filter(
-      (s, i) =>
-        i > 0 &&
-        i < sorted.length - 1 &&
-        s.absGex > sorted[i - 1].absGex &&
-        s.absGex > sorted[i + 1].absGex,
-    )
-    .sort((a, b) => b.absGex - a.absGex);
-  abss.slice(0, 2).forEach((s, i) =>
+  // V: Forward Gamma 预测最大负净GEX — Predicted Max Negative Gamma Strike
+  if (fg?.predictedMaxNegativeStrike && fg.predictedMaxNegativeGEX < 0) {
+    raw.push({
+      label: "V",
+      strike: fg.predictedMaxNegativeStrike,
+      netGex: fg.predictedMaxNegativeGEX,
+      absGex: 0,
+      color: "#1a1d26",
+      desc: "预测最大负伽马",
+      confluent: false,
+    });
+  } else {
+    // 降级：当前快照最小 netGex
+    const v = sorted.sort((a, b) => a.netGex - b.netGex)[0];
+    if (v) {
+      raw.push({
+        label: "V",
+        strike: v.strike,
+        netGex: v.netGex,
+        absGex: v.absGex,
+        color: "#1a1d26",
+        desc: "波动放大器",
+        confluent: false,
+      });
+    }
+  }
+
+  // A: 绝对 GEX 峰值 — absGex（|call|+|put|）最高的两个
+  const absSorted = [...sorted].sort((a, b) => b.absGex - a.absGex);
+
+  const aLvs: typeof absSorted = [];
+  for (const s of absSorted) {
+    const tooClose = aLvs.some((p) => Math.abs(p.strike - s.strike) < minDist);
+    if (!tooClose) aLvs.push(s);
+    if (aLvs.length >= 2) break;
+  }
+
+  aLvs.forEach((s, i) =>
     raw.push({
       label: `A${i + 1}`,
       strike: s.strike,
@@ -70,24 +119,13 @@ function findKeyLevels(strikes: StrikeGex[], underlyingPrice: number): KL[] {
       confluent: false,
     }),
   );
-  const lowerNegative = sorted
-    .filter((s) => s.strike < underlyingPrice && s.netGex < 0)
-    .map((s) => ({
-      ...s,
-      score: Math.abs(s.netGex) / Math.max(1, underlyingPrice - s.strike),
-    }))
-    .sort((a, b) => b.score - a.score);
+  // N: 负净伽马峰值 — netGex 最小的两个（最负）
+  const negSorted = [...sorted].sort((a, b) => a.netGex - b.netGex);
 
-  const negs: typeof lowerNegative = [];
-  const minDist = underlyingPrice * 0.01;
-
-  for (const s of lowerNegative) {
+  const negs: typeof negSorted = [];
+  for (const s of negSorted) {
     const tooClose = negs.some((n) => Math.abs(n.strike - s.strike) < minDist);
-
-    if (!tooClose) {
-      negs.push(s);
-    }
-
+    if (!tooClose) negs.push(s);
     if (negs.length >= 2) break;
   }
 
@@ -102,13 +140,11 @@ function findKeyLevels(strikes: StrikeGex[], underlyingPrice: number): KL[] {
       confluent: false,
     }),
   );
-  // P: Positive Gamma Peaks — 正 netGex 第2、第3名（S已占第1），做市商稳定价格
-  const positiveSorted = sorted
-    .filter((s) => s.netGex > 0 && !raw.find((l) => l.strike === s.strike))
-    .sort((a, b) => b.netGex - a.netGex);
+  // P: 净伽马峰值 — netGex（正负相加）最高的两个
+  const netSorted = [...sorted].sort((a, b) => b.netGex - a.netGex);
 
-  const poss: typeof positiveSorted = [];
-  for (const s of positiveSorted) {
+  const poss: typeof netSorted = [];
+  for (const s of netSorted) {
     const tooClose = poss.some((p) => Math.abs(p.strike - s.strike) < minDist);
     if (!tooClose) poss.push(s);
     if (poss.length >= 2) break;
@@ -121,21 +157,10 @@ function findKeyLevels(strikes: StrikeGex[], underlyingPrice: number): KL[] {
       netGex: s.netGex,
       absGex: s.absGex,
       color: C.yellow,
-      desc: "正伽马峰",
+      desc: "净伽马峰",
       confluent: false,
     }),
   );
-  const v = [...sorted].sort((a, b) => a.netGex - b.netGex)[0];
-  if (v)
-    raw.push({
-      label: "V",
-      strike: v.strike,
-      netGex: v.netGex,
-      absGex: v.absGex,
-      color: C.blue,
-      desc: "波动放大器",
-      confluent: false,
-    });
 
   return raw;
 }
@@ -151,6 +176,7 @@ export default function GexChart({
   strikes,
   underlyingPrice,
   flipPoint,
+  forwardGamma: fg,
 }: GexChartProps) {
   const [showPos, setShowPos] = useState(true);
   const [showNeg, setShowNeg] = useState(true);
@@ -158,20 +184,21 @@ export default function GexChart({
   const [showPut, setShowPut] = useState(true);
   const [showRegime, setShowRegime] = useState(true);
   const kl = useMemo(() => {
-    const levels = findKeyLevels(strikes, underlyingPrice);
-    if (flipPoint != null) {
+    const levels = findKeyLevels(strikes, underlyingPrice, fg);
+    const fp = flipPoint;
+    if (fp != null) {
       levels.push({
         label: "F",
-        strike: flipPoint,
+        strike: fp,
         netGex: 0,
         absGex: 0,
         color: C.orange,
-        desc: "翻转点",
+        desc: "正负相抵→0",
         confluent: false,
       });
     }
     return levels;
-  }, [strikes, underlyingPrice, flipPoint]);
+  }, [strikes, underlyingPrice, flipPoint, fg]);
   // 固定初始视图 ±17.5%，缩放由 Plotly 原生 scrollZoom 处理（不依赖可变状态）
   const INITIAL_ZOOM_PCT = 35;
   const cd = useMemo(() => {
@@ -241,11 +268,12 @@ export default function GexChart({
   });
 
   // Flip Point (F) marker on zero line
-  if (flipPoint != null) {
+  const fpDraw = flipPoint;
+  if (fpDraw != null) {
     shapes.push({
       type: "line",
-      x0: flipPoint,
-      x1: flipPoint,
+      x0: fpDraw,
+      x1: fpDraw,
       y0: 0,
       y1: 1,
       yref: "paper",
@@ -269,6 +297,36 @@ export default function GexChart({
 
   // Zone fills & key levels — controlled by Regime toggle
   if (showRegime) {
+    // Forward Gamma 预测区间（优先）
+    if (fg?.positiveZone) {
+      shapes.push({
+        type: "rect",
+        x0: fg.positiveZone.startStrike,
+        x1: fg.positiveZone.endStrike,
+        y0: 0,
+        y1: 1,
+        yref: "paper",
+        fillcolor: C.green,
+        opacity: 0.15,
+        line: { width: 0 },
+        layer: "below",
+      });
+    }
+    if (fg?.negativeZone) {
+      shapes.push({
+        type: "rect",
+        x0: fg.negativeZone.startStrike,
+        x1: fg.negativeZone.endStrike,
+        y0: 0,
+        y1: 1,
+        yref: "paper",
+        fillcolor: C.red,
+        opacity: 0.15,
+        line: { width: 0 },
+        layer: "below",
+      });
+    }
+
     const nLvls = kl
       .filter((l) => l.label.startsWith("N"))
       .sort((a, b) => a.strike - b.strike);
@@ -279,7 +337,7 @@ export default function GexChart({
       .filter((l) => l.label.startsWith("A"))
       .sort((a, b) => a.strike - b.strike);
     for (const [levels, color, opacity] of [
-      [nLvls, C.green, 0.2],
+      [nLvls, C.red, 0.15],
       [pLvls, C.yellow, 0.2],
       [aLvls, C.blue, 0.2],
     ] as any) {
@@ -302,7 +360,8 @@ export default function GexChart({
     for (const l of kl) {
       const iA = l.label.startsWith("A"),
         iN = l.label.startsWith("N"),
-        iSV = l.label === "S" || l.label === "V",
+        iS = l.label === "S",
+        iV = l.label === "V",
         bc = l.color,
         lt = l.confluent ? `${l.label}\u2605` : l.label;
       shapes.push({
@@ -326,18 +385,21 @@ export default function GexChart({
               const d = cd.find((s) => s.strike === l.strike);
               return d ? Math.max(d.callGex, d.putGex) : 0;
             })()
-          : iSV
+          : iS || iV
             ? 0
             : l.netGex,
         xref: "x",
         yref: iA ? "y2" : "y",
         text: `<b>${lt}</b>`,
         showarrow: false,
-        font: { color: iSV ? bc : "#fff", size: iSV ? 12 : 9 },
-        bgcolor: iSV ? "rgba(0,0,0,0)" : bc,
-        bordercolor: iSV ? "rgba(0,0,0,0)" : bc,
+        font: {
+          color: iV ? "#fff" : iS ? "#1a1d26" : "#fff",
+          size: iS || iV ? 12 : 9,
+        },
+        bgcolor: iV ? "#1a1d26" : iS ? "#fff" : bc,
+        bordercolor: iV ? "#1a1d26" : iS ? "#1a1d26" : bc,
         borderpad: { l: 4, r: 4, t: 2, b: 2 },
-        ay: iA ? -26 : iSV ? 0 : l.netGex >= 0 ? -26 : 26,
+        ay: iA ? -26 : iS || iV ? 0 : l.netGex >= 0 ? -26 : 26,
       });
     }
   }
@@ -414,8 +476,8 @@ export default function GexChart({
       visible: showPut,
       mode: "lines",
       fill: "tozeroy",
-      line: { color: "#a78bfa", width: 1.5, shape: "spline", smoothing: 0.8 },
-      fillcolor: "rgba(167,139,250,0.30)",
+      line: { color: C.red, width: 1.5, shape: "spline", smoothing: 0.8 },
+      fillcolor: "rgba(239,68,68,0.30)",
       xaxis: "x",
       yaxis: "y2",
       hovertemplate: "%{x:$,.0f}<br>Put GEX: %{y:$,.2s}<extra></extra>",
@@ -564,8 +626,10 @@ export default function GexChart({
                   width: 24,
                   height: 16,
                   borderRadius: 3,
-                  background: bc,
-                  color: "#fff",
+                  background:
+                    l.label === "S" ? "#fff" : l.label === "V" ? "#1a1d26" : bc,
+                  color: l.label === "S" ? "#1a1d26" : "#fff",
+                  border: l.label === "S" ? "1px solid #1a1d26" : "none",
                   fontSize: 8,
                   fontWeight: 700,
                 }}

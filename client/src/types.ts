@@ -52,6 +52,42 @@ export interface ExchangeHealth {
   online: boolean;
 }
 
+/** Forward Gamma Surface 区域 */
+export interface GammaZone {
+  startStrike: number;
+  endStrike: number;
+  peakStrike: number;
+  peakGEX: number;
+}
+
+/** 单个 Spot 节点的 Gamma Surface 数据 */
+export interface GammaSurfacePoint {
+  spot: number;
+  positiveZone: GammaZone | null;
+  negativeZone: GammaZone | null;
+  maxPositiveStrike: number;
+  maxPositiveGEX: number;
+  maxNegativeStrike: number;
+  maxNegativeGEX: number;
+  totalNetGEX: number;
+}
+
+/** Forward Gamma 预测结果 */
+export interface ForwardGammaResult {
+  predictedMaxPositiveStrike: number;
+  predictedMaxPositiveGEX: number;
+  predictedMaxNegativeStrike: number;
+  predictedMaxNegativeGEX: number;
+  positiveZone: GammaZone | null;
+  negativeZone: GammaZone | null;
+  totalNetGEX: number;
+  surface: GammaSurfacePoint[];
+  underlyingPrice: number;
+  bestPositiveSpot: number;
+  bestNegativeSpot: number;
+  predictedFlipPoint: number | null;
+}
+
 export const EXCHANGE_LABELS: Record<ExchangeSource, string> = {
   deribit: "Deribit",
 };

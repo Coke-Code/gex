@@ -9,6 +9,7 @@ import fs from "fs";
 import { DeribitAdapter } from "./exchanges";
 import { aggregateGex } from "./aggregator";
 import { GexResponse } from "./types";
+import { computeGammaSurface, getPredictedZones } from "./greeks/forwardGamma";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -120,6 +121,28 @@ app.get("/api/gex/:underlying/history", (req: Request, res: Response) => {
   const coin = (req.params.underlying || "BTC").toUpperCase();
   const history = historyMap.get(coin) ?? [];
   res.json({ success: true, data: history });
+});
+
+/** 获取 Forward Gamma Surface */
+app.get("/api/gex/:underlying/surface", async (req: Request, res: Response) => {
+  const underlying = (req.params.underlying || "BTC").toUpperCase();
+
+  try {
+    const price = await deribit.fetchUnderlyingPrice(underlying);
+    const options = await deribit.fetchOptions(underlying);
+
+    // 回填标的价格
+    for (const opt of options) {
+      if (opt.underlyingPrice === 0) opt.underlyingPrice = price;
+    }
+
+    const surface = computeGammaSurface(options, price);
+    const predicted = getPredictedZones(surface);
+
+    res.json({ success: true, data: { ...predicted, underlyingPrice: price } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // ---- 生产环境：托管前端静态文件 ----

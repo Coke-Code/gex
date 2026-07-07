@@ -1,6 +1,6 @@
 // API 客户端
 
-import { GexResponse, ExchangeHealth } from "../types";
+import { GexResponse, ExchangeHealth, ForwardGammaResult } from "../types";
 
 const API_BASE = "/api";
 
@@ -16,4 +16,11 @@ export async function fetchHealth(): Promise<ExchangeHealth[]> {
   const resp = await fetch(`${API_BASE}/health`);
   const json = await resp.json();
   return json.exchanges;
+}
+
+export async function fetchGammaSurface(
+  underlying: string,
+): Promise<{ success: boolean; data: ForwardGammaResult; error?: string }> {
+  const resp = await fetch(`${API_BASE}/gex/${underlying}/surface`);
+  return resp.json();
 }

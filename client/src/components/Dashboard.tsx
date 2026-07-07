@@ -7,6 +7,8 @@ import { useGexData } from "../hooks/useGexData";
 import GexChart from "./GexChart";
 import InfoCards from "./InfoCards";
 import SummaryCards from "./SummaryCards";
+import { fetchGammaSurface } from "../api/client";
+import { ForwardGammaResult } from "../types";
 
 const REFRESH_INTERVAL = 60;
 
@@ -14,6 +16,18 @@ export default function Dashboard() {
   const { data, loading, error, refresh, history } = useGexData();
   const [live, setLive] = useState(true);
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
+  const [forwardGamma, setForwardGamma] = useState<
+    ForwardGammaResult | undefined
+  >();
+
+  useEffect(() => {
+    if (!data) return;
+    fetchGammaSurface("BTC")
+      .then((r) => {
+        if (r.success) setForwardGamma(r.data);
+      })
+      .catch(() => {});
+  }, [data?.timestamp]);
 
   useEffect(() => {
     if (!live) return;
@@ -122,6 +136,7 @@ export default function Dashboard() {
                 underlyingPrice={data.underlyingPrice}
                 flipZone={data.flipZone}
                 flipPoint={data.flipPoint}
+                forwardGamma={forwardGamma}
               />
             ) : (
               <div className="gex-empty">
