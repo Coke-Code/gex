@@ -1,9 +1,9 @@
 // ============================================================
-// Dashboard — BTC GEX 看板 (Deribit) — GammaFlip 风格
+// Dashboard — BTC/ETH GEX 看板 (Deribit) — GammaFlip 风格
 // ============================================================
 
 import { useState, useEffect } from "react";
-import { useGexData } from "../hooks/useGexData";
+import { useGexData, Underlying } from "../hooks/useGexData";
 import GexChart from "./GexChart";
 import InfoCards from "./InfoCards";
 import SummaryCards from "./SummaryCards";
@@ -13,7 +13,8 @@ import { ForwardGammaResult } from "../types";
 const REFRESH_INTERVAL = 60;
 
 export default function Dashboard() {
-  const { data, loading, error, refresh, history } = useGexData();
+  const { data, loading, error, refresh, history, underlying, setUnderlying } =
+    useGexData();
   const [live, setLive] = useState(true);
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
   const [forwardGamma, setForwardGamma] = useState<
@@ -22,12 +23,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!data) return;
-    fetchGammaSurface("BTC")
+    fetchGammaSurface(underlying)
       .then((r) => {
         if (r.success) setForwardGamma(r.data);
       })
       .catch(() => {});
-  }, [data?.timestamp]);
+  }, [data?.timestamp, underlying]);
 
   useEffect(() => {
     if (!live) return;
@@ -42,7 +43,7 @@ export default function Dashboard() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [live, refresh, data?.timestamp]);
+  }, [live, refresh, data?.timestamp, underlying]);
 
   const timeStr =
     new Date(data?.timestamp ?? Date.now())
@@ -61,6 +62,18 @@ export default function Dashboard() {
             <span style={{ fontWeight: 500, color: "var(--text-secondary)" }}>
               Deribit
             </span>
+          </div>
+          <div className="gex-pill-group">
+            {(["BTC", "ETH"] as Underlying[]).map((u) => (
+              <button
+                key={u}
+                type="button"
+                className={`gex-pill${underlying === u ? " gex-pill--active" : ""}`}
+                onClick={() => setUnderlying(u)}
+              >
+                {u}
+              </button>
+            ))}
           </div>
         </div>
         <div className="gex-header-right">
@@ -105,7 +118,7 @@ export default function Dashboard() {
             >
               <div>
                 <h2 className="gex-chart-title">
-                  BTC: GEX
+                  {underlying}: GEX
                   {data?.underlyingPrice != null && (
                     <span className="gex-index-price">
                       {" "}

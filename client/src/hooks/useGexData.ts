@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { GexAnalysis } from "../types";
 import { fetchGexData } from "../api/client";
 
+export type Underlying = "BTC" | "ETH";
+
 export interface HistorySnap {
   timestamp: number;
   flipPoint: number | null;
@@ -16,9 +18,14 @@ interface UseGexDataReturn {
   loading: boolean;
   error: string | null;
   refresh: () => void;
+  underlying: Underlying;
+  setUnderlying: (u: Underlying) => void;
 }
 
-export function useGexData(): UseGexDataReturn {
+export function useGexData(
+  initialUnderlying: Underlying = "BTC",
+): UseGexDataReturn {
+  const [underlying, setUnderlying] = useState<Underlying>(initialUnderlying);
   const [data, setData] = useState<GexAnalysis | null>(null);
   const [history, setHistory] = useState<HistorySnap[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,10 +36,10 @@ export function useGexData(): UseGexDataReturn {
     setLoading(true);
     setError(null);
     try {
-      const [gexResult] = await Promise.all([fetchGexData("BTC")]);
+      const [gexResult] = await Promise.all([fetchGexData(underlying)]);
       // 先等 GEX 数据存入历史，再拉历史
-      const histResult = await fetch("/api/gex/BTC/history").then((r) =>
-        r.json(),
+      const histResult = await fetch(`/api/gex/${underlying}/history`).then(
+        (r) => r.json(),
       );
       if (gexResult.success) {
         setData(gexResult.data);
@@ -48,15 +55,24 @@ export function useGexData(): UseGexDataReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [underlying]);
 
   useEffect(() => {
     loadData();
+    if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(loadData, 60000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [loadData]);
 
-  return { data, history, loading, error, refresh: loadData };
+  return {
+    data,
+    history,
+    loading,
+    error,
+    refresh: loadData,
+    underlying,
+    setUnderlying,
+  };
 }
