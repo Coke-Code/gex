@@ -21,6 +21,11 @@ export default function Dashboard() {
     ForwardGammaResult | undefined
   >();
 
+  // 切换标的时清空旧 surface，避免跨币种显示错误的 flip
+  useEffect(() => {
+    setForwardGamma(undefined);
+  }, [underlying]);
+
   useEffect(() => {
     if (!data) return;
     fetchGammaSurface(underlying)
@@ -138,7 +143,7 @@ export default function Dashboard() {
                   <span>{timeStr}</span>
                 </div>
               </div>
-              {data && <SummaryCards data={data} />}
+              {data && <SummaryCards data={data} forwardGamma={forwardGamma} />}
             </div>
           </div>
 
@@ -162,7 +167,11 @@ export default function Dashboard() {
 
         <aside className="gex-sidebar">
           {data ? (
-            <InfoCards data={data} history={history} />
+            <InfoCards
+              data={data}
+              history={history}
+              forwardGamma={forwardGamma}
+            />
           ) : (
             <div className="gex-card gex-empty" style={{ height: 200 }}>
               加载中…

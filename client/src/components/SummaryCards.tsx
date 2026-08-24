@@ -2,10 +2,11 @@
 // 图表标题栏摘要卡片 — Flip / Hedging / Absolute GEX
 // ============================================================
 
-import { GexAnalysis } from "../types";
+import { GexAnalysis, ForwardGammaResult } from "../types";
 
 interface SummaryCardsProps {
   data: GexAnalysis;
+  forwardGamma?: ForwardGammaResult;
 }
 
 function formatPrice(value: number): string {
@@ -21,11 +22,14 @@ function formatGexCompact(value: number): string {
   return `${sign}${value.toFixed(0)}`;
 }
 
-export default function SummaryCards({ data }: SummaryCardsProps) {
-  const aboveFlip =
-    data.flipPoint != null && data.underlyingPrice > data.flipPoint;
-  const belowFlip =
-    data.flipPoint != null && data.underlyingPrice < data.flipPoint;
+export default function SummaryCards({
+  data,
+  forwardGamma,
+}: SummaryCardsProps) {
+  // Flip 优先用 spot 空间的预测翻转点，缺失时回退到快照近似值
+  const flipPoint = forwardGamma?.predictedFlipPoint ?? data.flipPoint;
+  const aboveFlip = flipPoint != null && data.underlyingPrice > flipPoint;
+  const belowFlip = flipPoint != null && data.underlyingPrice < flipPoint;
 
   const pressureColor =
     data.hedgingPressure === "positive"
@@ -81,7 +85,7 @@ export default function SummaryCards({ data }: SummaryCardsProps) {
             fontVariantNumeric: "tabular-nums",
           }}
         >
-          {data.flipPoint ? formatPrice(data.flipPoint) : "N/A"}
+          {flipPoint ? formatPrice(flipPoint) : "N/A"}
         </span>
         <span
           style={{

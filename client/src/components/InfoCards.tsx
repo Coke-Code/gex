@@ -2,12 +2,13 @@
 // 右侧信息卡片 — Flip Point / Hedging Pressure / Absolute GEX / 交易建议
 // ============================================================
 
-import { GexAnalysis } from "../types";
+import { GexAnalysis, ForwardGammaResult } from "../types";
 import { HistorySnap } from "../hooks/useGexData";
 
 interface InfoCardsProps {
   data: GexAnalysis;
   history: HistorySnap[];
+  forwardGamma?: ForwardGammaResult;
 }
 
 function formatPrice(value: number): string {
@@ -25,9 +26,14 @@ function formatGexCompact(value: number): string {
 
 const DOT = "\u00B7";
 
-function TradingSuggestion({ data }: { data: GexAnalysis }) {
+function TradingSuggestion({
+  data,
+  forwardGamma,
+}: {
+  data: GexAnalysis;
+  forwardGamma?: ForwardGammaResult;
+}) {
   const {
-    flipPoint,
     flipZone,
     underlyingPrice,
     hedgingPressure,
@@ -36,6 +42,9 @@ function TradingSuggestion({ data }: { data: GexAnalysis }) {
     gexPer1PctMove,
     strikes,
   } = data;
+
+  // Flip 优先用 spot 空间的预测翻转点，缺失时回退到快照近似值
+  const flipPoint = forwardGamma?.predictedFlipPoint ?? data.flipPoint;
 
   // ── 辅助计算 ──
   const aboveFlip = flipPoint != null && underlyingPrice > flipPoint;
@@ -463,6 +472,10 @@ function TradingSuggestion({ data }: { data: GexAnalysis }) {
   );
 }
 
-export default function InfoCards({ data, history }: InfoCardsProps) {
-  return <TradingSuggestion data={data} />;
+export default function InfoCards({
+  data,
+  history,
+  forwardGamma,
+}: InfoCardsProps) {
+  return <TradingSuggestion data={data} forwardGamma={forwardGamma} />;
 }
