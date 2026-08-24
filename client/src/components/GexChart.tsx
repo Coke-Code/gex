@@ -3,6 +3,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { StrikeGex, ForwardGammaResult } from "../types";
 
 interface GexChartProps {
+  underlying: string;
   strikes: StrikeGex[];
   underlyingPrice: number;
   flipZone: { low: number; high: number } | null;
@@ -173,6 +174,7 @@ function fmt(v: number): string {
 }
 
 export default function GexChart({
+  underlying,
   strikes,
   underlyingPrice,
   flipPoint,
@@ -199,16 +201,8 @@ export default function GexChart({
     }
     return levels;
   }, [strikes, underlyingPrice, flipPoint, fg]);
-  // 固定初始视图 ±17.5%，缩放由 Plotly 原生 scrollZoom 处理（不依赖可变状态）
-  const INITIAL_ZOOM_PCT = 35;
-  const cd = useMemo(() => {
-    const r = (underlyingPrice * INITIAL_ZOOM_PCT) / 100;
-    return strikes.filter(
-      (s) =>
-        s.strike >= underlyingPrice - r / 2 &&
-        s.strike <= underlyingPrice + r / 2,
-    );
-  }, [strikes, underlyingPrice]);
+  // 渲染全部行权价，查看范围交给 Plotly 原生 scrollZoom / pan
+  const cd = strikes;
   const x = cd.map((d) => d.strike),
     ng = cd.map((d) => d.netGex),
     cg = cd.map((d) => d.callGex),
@@ -526,7 +520,8 @@ export default function GexChart({
     barmode: "relative",
     showspikes: true,
     spikemode: "across",
-    uirevision: "no-reset",
+    // 切换标的时重置缩放；同一标的刷新时保留用户缩放
+    uirevision: underlying,
   };
   const config = { displayModeBar: false, responsive: true, scrollZoom: true };
 

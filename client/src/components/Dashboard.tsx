@@ -145,6 +145,7 @@ export default function Dashboard() {
           <div className="gex-chart-body">
             {data && data.strikes.length > 0 ? (
               <GexChart
+                underlying={data.underlying}
                 strikes={data.strikes}
                 underlyingPrice={data.underlyingPrice}
                 flipZone={data.flipZone}
