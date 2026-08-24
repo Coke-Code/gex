@@ -478,6 +478,28 @@ export default function GexChart({
     },
   ];
 
+  // 初始视图：拟合有 GEX 的行权价范围（含全部有效行权价），避免空档压缩有效区域
+  const initialRange = useMemo<[number, number]>(() => {
+    const active = strikes.filter((s) => s.absGex > 0);
+    if (active.length === 0) {
+      return [underlyingPrice * 0.825, underlyingPrice * 1.175];
+    }
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const s of active) {
+      if (s.strike < lo) lo = s.strike;
+      if (s.strike > hi) hi = s.strike;
+    }
+    if (!(lo < hi)) {
+      return [underlyingPrice * 0.825, underlyingPrice * 1.175];
+    }
+    const pad = (hi - lo) * 0.05;
+    return [
+      Math.min(lo - pad, underlyingPrice),
+      Math.max(hi + pad, underlyingPrice),
+    ];
+  }, [strikes, underlyingPrice]);
+
   const layout: any = {
     xaxis: {
       domain: [0, 1],
@@ -486,6 +508,8 @@ export default function GexChart({
       zeroline: false,
       gridcolor: C.grid,
       fixedrange: false,
+      // 初始视图拟合有 GEX 的行权价范围，可 scrollZoom 缩放出去
+      range: initialRange,
     },
     yaxis: {
       domain: [0.55, 0.98],
