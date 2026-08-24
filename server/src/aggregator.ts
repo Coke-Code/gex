@@ -30,10 +30,16 @@ export async function aggregateGex(
 
   const underlyingPrice = price;
 
-  // 2. 收集汇总
+  // 2. 收集汇总（与下方按行权价聚合使用同一价格源 opt.underlyingPrice）
   let totalGex = 0;
   for (const opt of options) {
-    const gex = computeGEX(opt.gamma, opt.openInterest, opt.strike, 1, price);
+    const gex = computeGEX(
+      opt.gamma,
+      opt.openInterest,
+      opt.strike,
+      1,
+      opt.underlyingPrice,
+    );
     totalGex += gex * (opt.optionType === "call" ? 1 : -1);
   }
 
@@ -127,8 +133,8 @@ export async function aggregateGex(
   if (nearbyNet > totalAbsGex * 0.05) hedgingPressure = "positive";
   else if (nearbyNet < -totalAbsGex * 0.05) hedgingPressure = "negative";
 
-  // 10. 每1%波动的净 GEX
-  const gexPer1PctMove = totalNetGex * 0.01;
+  // 10. 每1%波动的净 GEX（computeGEX 已内含 ×0.01，直接等于总净GEX）
+  const gexPer1PctMove = totalNetGex;
 
   return {
     underlying,

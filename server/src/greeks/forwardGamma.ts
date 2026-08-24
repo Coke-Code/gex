@@ -61,7 +61,8 @@ export function computeGammaSurface(
 
       const gamma = greeks.gamma;
       const oi = opt.openInterest;
-      const gex = gamma * oi * spot * spot;
+      // 与 aggregateGex 的 computeGEX 口径一致：×0.01（每 1% 移动）
+      const gex = gamma * oi * spot * spot * 0.01;
 
       const net = opt.optionType === "call" ? gex : -gex;
       strikeGex.set(K, (strikeGex.get(K) || 0) + net);
@@ -170,6 +171,22 @@ export function computeGammaSurface(
  * F = TotalNetGEX(Spot) = 0 的 Spot 价格（市场净伽马翻转点）
  */
 export function getPredictedZones(surface: GammaSurfacePoint[]) {
+  if (surface.length === 0) {
+    return {
+      predictedMaxPositiveStrike: 0,
+      predictedMaxPositiveGEX: 0,
+      predictedMaxNegativeStrike: 0,
+      predictedMaxNegativeGEX: 0,
+      positiveZone: null,
+      negativeZone: null,
+      totalNetGEX: 0,
+      bestPositiveSpot: 0,
+      bestNegativeSpot: 0,
+      predictedFlipPoint: null,
+      surface: [],
+    };
+  }
+
   let bestPos: GammaSurfacePoint = surface[0];
   let bestNeg: GammaSurfacePoint = surface[0];
 
