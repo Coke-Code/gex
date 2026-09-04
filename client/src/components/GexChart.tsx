@@ -185,6 +185,9 @@ export default function GexChart({
   const [showCall, setShowCall] = useState(true);
   const [showPut, setShowPut] = useState(true);
   const [showRegime, setShowRegime] = useState(true);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 768,
+  );
   const kl = useMemo(() => {
     const levels = findKeyLevels(strikes, underlyingPrice, fg);
     const fp = fg?.predictedFlipPoint ?? flipPoint;
@@ -486,6 +489,11 @@ export default function GexChart({
       zeroline: false,
       gridcolor: C.grid,
       fixedrange: false,
+      // 移动端默认聚焦现货附近的窗口，避免全部行权价挤成一团
+      range:
+        isMobile && underlyingPrice > 0
+          ? [underlyingPrice * 0.94, underlyingPrice * 1.06]
+          : undefined,
     },
     yaxis: {
       domain: [0.55, 0.98],
@@ -513,7 +521,7 @@ export default function GexChart({
     plot_bgcolor: "#fff",
     showlegend: false,
     dragmode: "pan",
-    height: window.innerWidth < 768 ? 340 : 480,
+    height: isMobile ? 340 : 480,
     hovermode: "x unified",
     hoversubplots: "axis",
     bargap: 0.15,
@@ -523,7 +531,20 @@ export default function GexChart({
     // 切换标的时重置缩放；同一标的刷新时保留用户缩放
     uirevision: underlying,
   };
-  const config = { displayModeBar: false, responsive: true, scrollZoom: true };
+  const config = {
+    displayModeBar: isMobile,
+    displaylogo: false,
+    responsive: true,
+    scrollZoom: true,
+    // 移动端显示精简工具条，提供缩放 / 平移 / 复位入口
+    modeBarButtons: isMobile
+      ? [
+          ["zoom2d", "pan2d"],
+          ["zoomIn2d", "zoomOut2d"],
+          ["autoScale2d", "resetScale2d"],
+        ]
+      : undefined,
+  };
 
   const plotRef = useRef<HTMLDivElement>(null);
 
@@ -541,6 +562,7 @@ export default function GexChart({
   // resize handler
   useEffect(() => {
     const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
       if (plotRef.current) {
         window.Plotly.Plots.resize(plotRef.current);
       }
