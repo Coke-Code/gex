@@ -1,26 +1,10 @@
-// API 客户端
+import { GexResponse, VenueFilter } from "../types";
 
-import { GexResponse, ExchangeHealth, ForwardGammaResult } from "../types";
-
-const API_BASE = "/api";
-
-export async function fetchGexData(underlying: string): Promise<GexResponse> {
-  const resp = await fetch(`${API_BASE}/gex/${underlying}`);
+export async function fetchGexData(venue: VenueFilter): Promise<GexResponse> {
+  const resp = await fetch(`/api/gex/BTC?venue=${venue}`, { cache: "no-store" });
   if (!resp.ok) {
-    throw new Error(`API error: ${resp.status} ${resp.statusText}`);
+    const body = (await resp.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error || `API ${resp.status}`);
   }
-  return resp.json();
-}
-
-export async function fetchHealth(): Promise<ExchangeHealth[]> {
-  const resp = await fetch(`${API_BASE}/health`);
-  const json = await resp.json();
-  return json.exchanges;
-}
-
-export async function fetchGammaSurface(
-  underlying: string,
-): Promise<{ success: boolean; data: ForwardGammaResult; error?: string }> {
-  const resp = await fetch(`${API_BASE}/gex/${underlying}/surface`);
   return resp.json();
 }

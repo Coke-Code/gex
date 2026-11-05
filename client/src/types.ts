@@ -1,7 +1,11 @@
-// 前端类型定义（与后端 types.ts 对应）
+export type ExchangeSource = "deribit" | "binance" | "okx";
+export type VenueFilter = "all" | ExchangeSource;
 
-export type OptionType = "call" | "put";
-export type ExchangeSource = "deribit";
+export interface StrikeExpiry {
+  expiry: string;
+  days: number;
+  netGex: number;
+}
 
 export interface StrikeGex {
   strike: number;
@@ -9,19 +13,56 @@ export interface StrikeGex {
   putGex: number;
   netGex: number;
   absGex: number;
-  breakdown: {
-    deribit?: {
-      callGex: number;
-      putGex: number;
-      oi: number;
-    };
-  };
+  oi: number;
+  volume: number | null;
+  volumePartial: boolean;
+  byExpiry: StrikeExpiry[];
+  netThen: number | null;
 }
 
-export interface ExchangeBreakdownEntry {
+export interface ExpirySlice {
+  expiry: string;
+  expiryTimestamp: number;
+  days: number;
+  netGex: number;
+  absGex: number;
+  atmIv: number | null;
+}
+
+export interface PriceLevel {
+  strike: number;
+  netGex: number;
+}
+
+export interface VenueStatus {
+  venue: ExchangeSource;
+  online: boolean;
+  error: string | null;
+  included: boolean;
+  contractsUsed: number;
+  netGex: number;
+  absGex: number;
+  flipPoint: number | null;
+}
+
+export interface GammaCurvePoint {
+  spot: number;
   totalNetGex: number;
-  optionCount: number;
-  totalOI: number;
+}
+
+export type MarkerKind = "P" | "N" | "A" | "F" | "S" | "V" | "GC";
+
+export interface ChartMarker {
+  id: string;
+  kind: MarkerKind;
+  price: number;
+  confluence: boolean;
+}
+
+export interface DataQuality {
+  contractsSeen: number;
+  contractsUsed: number;
+  contractsDropped: number;
 }
 
 export interface GexAnalysis {
@@ -32,66 +73,53 @@ export interface GexAnalysis {
   totalNetGex: number;
   totalAbsGex: number;
   flipPoint: number | null;
-  flipZone: { low: number; high: number } | null;
+  markers: ChartMarker[];
   hedgingPressure: "positive" | "negative" | "neutral";
-  gexPer1PctMove: number;
-  exchangeBreakdown: {
-    deribit?: ExchangeBreakdownEntry;
+  gammaCurve: GammaCurvePoint[];
+  levels: {
+    support: PriceLevel | null;
+    resistance: PriceLevel | null;
   };
+  expiries: ExpirySlice[];
+  move: {
+    expiry: string;
+    days: number;
+    iv: number;
+    oneDay: number;
+  } | null;
+  change: {
+    timestamp: number;
+    ageHours: number;
+    flipPoint: number | null;
+    price: number;
+  } | null;
+  speed: {
+    hedgeUsdPer1Pct: number;
+    gexChangePer1Pct: number | null;
+  };
+  skew: {
+    expiry: string;
+    days: number;
+    putIv: number;
+    callIv: number;
+    rr: number;
+  } | null;
+  venue: VenueFilter;
+  venues: VenueStatus[];
+  quality: DataQuality;
 }
 
 export interface GexResponse {
   success: boolean;
-  data: GexAnalysis;
+  data?: GexAnalysis;
   exchanges: ExchangeSource[];
   errors?: { exchange: string; message: string }[];
+  error?: string;
 }
 
-export interface ExchangeHealth {
-  exchange: string;
-  online: boolean;
-}
-
-/** Forward Gamma Surface 区域 */
-export interface GammaZone {
-  startStrike: number;
-  endStrike: number;
-  peakStrike: number;
-  peakGEX: number;
-}
-
-/** 单个 Spot 节点的 Gamma Surface 数据 */
-export interface GammaSurfacePoint {
-  spot: number;
-  positiveZone: GammaZone | null;
-  negativeZone: GammaZone | null;
-  maxPositiveStrike: number;
-  maxPositiveGEX: number;
-  maxNegativeStrike: number;
-  maxNegativeGEX: number;
-  totalNetGEX: number;
-}
-
-/** Forward Gamma 预测结果 */
-export interface ForwardGammaResult {
-  predictedMaxPositiveStrike: number;
-  predictedMaxPositiveGEX: number;
-  predictedMaxNegativeStrike: number;
-  predictedMaxNegativeGEX: number;
-  positiveZone: GammaZone | null;
-  negativeZone: GammaZone | null;
-  totalNetGEX: number;
-  surface: GammaSurfacePoint[];
-  underlyingPrice: number;
-  bestPositiveSpot: number;
-  bestNegativeSpot: number;
-  predictedFlipPoint: number | null;
-}
-
-export const EXCHANGE_LABELS: Record<ExchangeSource, string> = {
+export const VENUE_LABEL: Record<VenueFilter, string> = {
+  all: "聚合",
   deribit: "Deribit",
-};
-
-export const EXCHANGE_COLORS: Record<ExchangeSource, string> = {
-  deribit: "#00D4AA",
+  binance: "Binance",
+  okx: "OKX",
 };

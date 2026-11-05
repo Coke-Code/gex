@@ -1,78 +1,41 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { GexAnalysis } from "../types";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchGexData } from "../api/client";
+import { GexAnalysis, VenueFilter } from "../types";
 
-export type Underlying = "BTC" | "ETH";
-
-export interface HistorySnap {
-  timestamp: number;
-  flipPoint: number | null;
-  totalNetGex: number;
-  totalAbsGex: number;
-  underlyingPrice: number;
-}
-
-interface UseGexDataReturn {
-  data: GexAnalysis | null;
-  history: HistorySnap[];
-  loading: boolean;
-  error: string | null;
-  refresh: () => void;
-  underlying: Underlying;
-  setUnderlying: (u: Underlying) => void;
-}
-
-export function useGexData(
-  initialUnderlying: Underlying = "BTC",
-): UseGexDataReturn {
-  const [underlying, setUnderlying] = useState<Underlying>(initialUnderlying);
+export function useGexData() {
+  const [venue, setVenue] = useState<VenueFilter>("all");
   const [data, setData] = useState<GexAnalysis | null>(null);
-  const [history, setHistory] = useState<HistorySnap[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const timer = useRef<ReturnType<typeof setInterval>>();
+  const request = useRef(0);
 
   const loadData = useCallback(async () => {
+    const id = ++request.current;
     setLoading(true);
     setError(null);
     try {
-      const [gexResult] = await Promise.all([fetchGexData(underlying)]);
-      // 先等 GEX 数据存入历史，再拉历史
-      const histResult = await fetch(`/api/gex/${underlying}/history`).then(
-        (r) => r.json(),
-      );
-      if (gexResult.success) {
-        setData(gexResult.data);
-        if (gexResult.errors?.some((e) => e.exchange === "deribit")) {
-          setError("Deribit 暂时不可用");
-        }
-      } else {
-        setError("获取数据失败");
-      }
-      if (histResult.success) setHistory(histResult.data);
-    } catch (err: any) {
-      setError(err.message);
+      const result = await fetchGexData(venue);
+      if (id !== request.current) return;
+      if (result.success && result.data) setData(result.data);
+      else setError(result.error || "没有拿到期权数据");
+    } catch (err: unknown) {
+      if (id !== request.current) return;
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setLoading(false);
+      if (id === request.current) setLoading(false);
     }
-  }, [underlying]);
+  }, [venue]);
 
   useEffect(() => {
+    setData(null);
     loadData();
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(loadData, 60000);
+    if (timer.current) clearInterval(timer.current);
+    timer.current = setInterval(loadData, 60_000);
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timer.current) clearInterval(timer.current);
     };
   }, [loadData]);
 
-  return {
-    data,
-    history,
-    loading,
-    error,
-    refresh: loadData,
-    underlying,
-    setUnderlying,
-  };
+  return { data, loading, error, refresh: loadData, venue, setVenue };
 }

@@ -1,0 +1,12 @@
+export const AXIS = "#a08b78";
+export const GRID = "#eef0f3";
+export const ZERO = "#d0d5dd";
+export const INK = "#3f342c";
+export const POS = "#1f9a62";
+export const NEG = "#e14d5a";
+export const SUPPORT = "#6d8494";
+export const RESIST = "#9a6248";
+export const FLIP = "#c4843a";
+export const BAND = "rgba(26, 29, 38, 0.05)";
+export const NOTE = "#8d7360";
+export const LABEL_BG = "rgba(255, 255, 255, 0.9)";

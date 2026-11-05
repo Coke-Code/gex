@@ -2,6 +2,7 @@
 
 interface PlotlyHTMLElement extends HTMLElement {
   on?: (event: string, handler: (...args: any[]) => void) => void;
+  removeListener?: (event: string, handler: (...args: any[]) => void) => void;
 }
 
 interface Window {
@@ -15,6 +16,7 @@ interface Window {
     Plots: {
       resize: (div: PlotlyHTMLElement) => void;
     };
+    relayout: (div: PlotlyHTMLElement | null, update: Record<string, unknown>) => Promise<unknown>;
     newPlot: (
       div: PlotlyHTMLElement | null,
       data: any[],

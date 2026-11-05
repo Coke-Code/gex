@@ -11,25 +11,25 @@
   --border: #e2e5ea;
   --border-strong: #d0d5dd;
 
-  --text-primary: #1a1d26;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
+  --text-primary: #3c322b;
+  --text-secondary: #8a7362;
+  --text-muted: #b19784;
 
-  --green: #16a34a;
+  --green: #3f7d52;
   --green-light: #dcfce7;
-  --green-bar: #22c55e;
+  --green-bar: #6f9468;
   --green-bg: rgba(34, 197, 94, 0.08);
 
-  --red: #dc2626;
+  --red: #b85a45;
   --red-light: #fee2e2;
-  --red-bar: #ef4444;
+  --red-bar: #c4715a;
   --red-bg: rgba(239, 68, 68, 0.08);
 
   --purple: #7c3aed;
   --purple-light: #ede9fe;
   --purple-bar: #8b5cf6;
 
-  --orange: #d97706;
+  --orange: #c4843a;
   --orange-light: #fef3c7;
 
   --blue: #2563eb;
@@ -899,5 +899,292 @@
   /* Plotly chart height */
   .js-plotly-plot {
     max-height: 380px !important;
+  }
+}
+
+.board {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.board-head,
+.board-stats {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+}
+
+.board-head {
+  padding: 10px 16px;
+  flex-wrap: wrap;
+}
+
+.board-id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.board-mark {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.board-px {
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.board-regime {
+  font-size: 12px;
+  font-weight: 650;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.board-regime.is-positive {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.board-regime.is-negative {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.board-regime.is-neutral {
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+}
+
+.board-pills {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.board-pill,
+.board-refresh {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.board-pill.is-on {
+  background: #1a1d26;
+  color: #fff;
+  border-color: #1a1d26;
+}
+
+.board-pill.is-off {
+  opacity: 0.4;
+}
+
+.board-refresh {
+  font-variant-numeric: tabular-nums;
+}
+
+.board-refresh:disabled {
+  cursor: default;
+}
+
+.board-stats {
+  padding: 8px 16px 10px;
+  overflow-x: auto;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  min-width: 108px;
+}
+
+.stat-k,
+.stat-s,
+.panel-h span {
+  color: var(--text-secondary);
+}
+
+.stat-k,
+.stat-s,
+.board-note,
+.board-foot {
+  font-size: 11px;
+}
+
+.stat-s {
+  white-space: nowrap;
+}
+
+.stat-v {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-v.is-green {
+  color: var(--green);
+}
+
+.stat-v.is-red {
+  color: var(--red);
+}
+
+.venue-flips {
+  min-width: 220px;
+}
+
+.venue-flip-v {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.strike-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  padding: 2px 12px 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.strike-split strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.strike-split .is-pos {
+  color: var(--green);
+}
+
+.strike-split .is-neg {
+  color: var(--red);
+}
+
+.board-note,
+.board-foot {
+  padding: 6px 16px 0;
+}
+
+.board-foot {
+  padding-bottom: 8px;
+  color: var(--text-muted);
+}
+
+.board-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.9fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 0.88fr);
+  gap: 8px;
+  padding: 8px;
+}
+
+.space-panel {
+  grid-row: 1 / span 2;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 12px 0;
+  font-size: 13px;
+}
+
+.panel-h span {
+  font-size: 12px;
+}
+
+.plot-wrap,
+.plot,
+.panel-empty {
+  flex: 1;
+  min-height: 0;
+}
+
+.plot-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.plot-reset {
+  position: absolute;
+  z-index: 2;
+  top: 4px;
+  right: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.board .js-plotly-plot,
+.board .plot {
+  max-height: none !important;
+}
+
+.panel-empty {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .board {
+    height: auto;
+    overflow: auto;
+  }
+
+  .board-head,
+  .board-stats {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .board-pills {
+    margin-left: 0;
+  }
+
+  .board-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: 480px 280px 240px;
+  }
+
+  .space-panel {
+    grid-row: auto;
   }
 }

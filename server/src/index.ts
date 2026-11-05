@@ -1,168 +1,170 @@
-// ============================================================
-// GEX Dashboard - 后端 API 服务 (Deribit)
-// ============================================================
+// BTC 期权看板 API。Deribit、Binance、OKX 能连上的都会算进去。
 
 import express, { Request, Response } from "express";
 import cors from "cors";
 import path from "path";
 import fs from "fs";
-import { DeribitAdapter } from "./exchanges";
-import { aggregateGex } from "./aggregator";
-import { GexResponse } from "./types";
-import { computeGammaSurface, getPredictedZones } from "./greeks/forwardGamma";
+import { loadBtc, parseVenue } from "./market";
+import { HistorySnap, HistoryStore, pickBaseline } from "./history";
+import { useSystemProxy } from "./proxy";
+import { GexAnalysis, GexResponse } from "./types";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const CACHE_MS = 15_000;
+
+useSystemProxy();
 
 app.use(cors());
 app.use(express.json());
-
-// 初始化 Deribit 适配器
-const deribit = new DeribitAdapter();
-
-// 历史快照缓存（每 5 分钟自动采集）
-const MAX_HISTORY = 288; // 24h = 288 × 5min
-const historyMap = new Map<
-  string,
-  {
-    timestamp: number;
-    flipPoint: number | null;
-    totalNetGex: number;
-    totalAbsGex: number;
-    underlyingPrice: number;
-  }[]
->();
-
-// 每 5 分钟自动采集一次快照
-const collectSnapshot = async () => {
-  for (const coin of ["BTC", "ETH"]) {
-    try {
-      const analysis = await aggregateGex(deribit, coin);
-      const snap = {
-        timestamp: analysis.timestamp,
-        flipPoint: analysis.flipPoint,
-        totalNetGex: analysis.totalNetGex,
-        totalAbsGex: analysis.totalAbsGex,
-        underlyingPrice: analysis.underlyingPrice,
-      };
-      if (!historyMap.has(coin)) historyMap.set(coin, []);
-      const arr = historyMap.get(coin)!;
-      arr.push(snap);
-      if (arr.length > MAX_HISTORY) arr.shift();
-    } catch {}
-  }
-};
-// 启动时快速采一批模拟历史
-(async () => {
-  for (let i = 0; i < 10; i++) {
-    await collectSnapshot();
-    if (i < 9) await new Promise((r) => setTimeout(r, 3000));
-  }
-})();
-setInterval(collectSnapshot, 60 * 1000); // 之后每分钟采集
-
-// ---- API 路由 ----
-
-/** 健康检查 */
-app.get("/api/health", async (_req: Request, res: Response) => {
-  const online = await deribit.healthCheck().catch(() => false);
-  res.json({ success: true, exchanges: [{ exchange: "deribit", online }] });
+app.use("/api", (req, res, next) => {
+  // 行情每次都要带正文。Express 默认 ETag，内容没变就回 304 且正文为空。
+  delete req.headers["if-none-match"];
+  delete req.headers["if-modified-since"];
+  res.set("Cache-Control", "no-store");
+  next();
 });
 
-/** 获取 GEX 数据（同时存入历史） */
+const history = new HistoryStore(
+  path.resolve(__dirname, "../data/gex-history.json"),
+);
+
+const cache = new Map<string, { at: number; data: GexAnalysis }>();
+const inflight = new Map<string, Promise<GexAnalysis>>();
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+async function getAnalysis(venueRaw: unknown): Promise<GexAnalysis> {
+  const venue = parseVenue(venueRaw);
+  const hit = cache.get(venue);
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.data;
+  const pending = inflight.get(venue);
+  if (pending) return pending;
+
+  const job = loadBtc(venue)
+    .then((data) => {
+      cache.set(venue, { at: Date.now(), data });
+      inflight.delete(venue);
+      return data;
+    })
+    .catch((err) => {
+      inflight.delete(venue);
+      throw err;
+    });
+  inflight.set(venue, job);
+  return job;
+}
+
+function remember(analysis: GexAnalysis): void {
+  if (analysis.venue !== "all" || !(analysis.underlyingPrice > 0)) return;
+  history.append("BTC", {
+    timestamp: analysis.timestamp,
+    flipPoint: analysis.flipPoint,
+    totalNetGex: analysis.totalNetGex,
+    totalAbsGex: analysis.totalAbsGex,
+    underlyingPrice: analysis.underlyingPrice,
+    strikes: analysis.strikes.map((strike) => ({
+      strike: strike.strike,
+      netGex: strike.netGex,
+    })),
+  });
+}
+
+function withBaseline(analysis: GexAnalysis, points: HistorySnap[]): GexAnalysis {
+  const base = analysis.venue === "all" ? pickBaseline(points, analysis.timestamp) : null;
+  if (!base) {
+    return {
+      ...analysis,
+      change: null,
+      strikes: analysis.strikes.map((strike) => ({ ...strike, netThen: null })),
+    };
+  }
+  const past = new Map(base.strikes.map((strike) => [strike.strike, strike.netGex]));
+  return {
+    ...analysis,
+    change: {
+      timestamp: base.timestamp,
+      ageHours: (analysis.timestamp - base.timestamp) / (60 * 60 * 1000),
+      flipPoint: base.flipPoint,
+      price: base.underlyingPrice,
+    },
+    strikes: analysis.strikes.map((strike) => ({
+      ...strike,
+      netThen: past.has(strike.strike) ? (past.get(strike.strike) as number) : null,
+    })),
+  };
+}
+
+app.get("/api/health", (_req: Request, res: Response) => {
+  res.json({ success: true, underlying: "BTC" });
+});
+
 app.get("/api/gex/:underlying", async (req: Request, res: Response) => {
-  const underlying = (req.params.underlying || "BTC").toUpperCase();
+  const underlying = String(req.params.underlying || "BTC").toUpperCase();
+  if (underlying !== "BTC") {
+    res.status(400).json({
+      success: false,
+      exchanges: [],
+      error: "只看 BTC 期权",
+    });
+    return;
+  }
 
   try {
-    const analysis = await aggregateGex(deribit, underlying);
-
-    // 每次请求都存快照（去重：5分钟内同一币种只存一次）
-    const coin = underlying;
-    const arr = historyMap.get(coin) ?? [];
-    const last = arr[arr.length - 1];
-    if (!last || analysis.timestamp - last.timestamp > 4 * 60 * 1000) {
-      arr.push({
-        timestamp: analysis.timestamp,
-        flipPoint: analysis.flipPoint,
-        totalNetGex: analysis.totalNetGex,
-        totalAbsGex: analysis.totalAbsGex,
-        underlyingPrice: analysis.underlyingPrice,
-      });
-      if (arr.length > MAX_HISTORY) arr.shift();
-      historyMap.set(coin, arr);
-    }
-
+    const analysis = await getAnalysis(req.query.venue);
+    remember(analysis);
+    const view = withBaseline(analysis, history.get("BTC"));
+    const failed = view.venues.filter(
+      (venue) => venue.included && !venue.online && venue.error,
+    );
     const response: GexResponse = {
       success: true,
-      data: analysis,
-      exchanges: ["deribit"],
-      errors: [],
+      data: view,
+      exchanges: view.venues
+        .filter((venue) => venue.online)
+        .map((venue) => venue.venue),
+      errors: failed.map((venue) => ({
+        exchange: venue.venue,
+        message: venue.error || "unavailable",
+      })),
     };
-
-    if (!analysis.exchangeBreakdown.deribit) {
-      response.errors!.push({
-        exchange: "deribit",
-        message: "No data returned",
-      });
-    }
-
     res.json(response);
-  } catch (err: any) {
+  } catch (err) {
     console.error("Aggregation error:", err);
     res.status(500).json({
       success: false,
-      error: err.message,
+      exchanges: [],
+      error: errorMessage(err),
     });
   }
 });
 
-/** 获取历史快照 */
 app.get("/api/gex/:underlying/history", (req: Request, res: Response) => {
-  const coin = (req.params.underlying || "BTC").toUpperCase();
-  const history = historyMap.get(coin) ?? [];
-  res.json({ success: true, data: history });
+  const coin = String(req.params.underlying || "BTC").toUpperCase();
+  res.json({ success: true, data: history.get(coin) });
 });
-
-/** 获取 Forward Gamma Surface */
-app.get("/api/gex/:underlying/surface", async (req: Request, res: Response) => {
-  const underlying = (req.params.underlying || "BTC").toUpperCase();
-
-  try {
-    const price = await deribit.fetchUnderlyingPrice(underlying);
-    const options = await deribit.fetchOptions(underlying);
-
-    // 回填标的价格
-    for (const opt of options) {
-      if (opt.underlyingPrice === 0) opt.underlyingPrice = price;
-    }
-
-    const surface = computeGammaSurface(options, price);
-    const predicted = getPredictedZones(surface);
-
-    res.json({ success: true, data: { ...predicted, underlyingPrice: price } });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ---- 生产环境：托管前端静态文件 ----
 
 const clientDist = path.resolve(__dirname, "../../client/dist");
 if (fs.existsSync(clientDist)) {
-  console.log(`📁 Serving static files from ${clientDist}`);
+  console.log(`Serving static files from ${clientDist}`);
   app.use(express.static(clientDist));
-  // SPA fallback — 非 /api 路由全部返回 index.html
   app.get(/^(?!\/api).*/, (_req: Request, res: Response) => {
     res.sendFile(path.join(clientDist, "index.html"));
   });
 }
 
 app.listen(PORT, () => {
-  console.log(`📊 GEX Dashboard API running on http://localhost:${PORT}`);
-  console.log(`   Endpoints:`);
-  console.log(`   - GET /api/health              — Deribit 连通性检查`);
-  console.log(`   - GET /api/gex/BTC             — BTC GEX 数据`);
-  console.log(`   - GET /api/gex/ETH             — ETH GEX 数据`);
+  console.log(`BTC options API on http://localhost:${PORT}`);
+  void getAnalysis("all").then(remember).catch((err) => {
+    console.error("Initial snapshot failed:", errorMessage(err));
+  });
+  setInterval(() => {
+    void getAnalysis("all").then(remember).catch((err) => {
+      console.error("Snapshot failed:", errorMessage(err));
+    });
+  }, 5 * 60 * 1000);
 });
 
 export default app;
