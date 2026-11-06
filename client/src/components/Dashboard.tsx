@@ -47,7 +47,7 @@ export default function Dashboard() {
     const timer = setInterval(() => {
       setCountdown((value) => {
         if (value <= 1) {
-          refresh();
+          refresh(true);
           return REFRESH_SECONDS;
         }
         return value - 1;
@@ -97,7 +97,7 @@ export default function Dashboard() {
             </button>
           ))}
         </div>
-        <button type="button" className="board-refresh" onClick={refresh} disabled={loading}>
+        <button type="button" className="board-refresh" onClick={() => refresh()} disabled={loading}>
           {loading ? "读取" : `${countdown}s`}
         </button>
       </header>

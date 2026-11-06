@@ -10,9 +10,10 @@ export function useGexData() {
   const timer = useRef<ReturnType<typeof setInterval>>();
   const request = useRef(0);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (background?: unknown) => {
     const id = ++request.current;
-    setLoading(true);
+    const silent = background === true;
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const result = await fetchGexData(venue);
@@ -31,7 +32,7 @@ export function useGexData() {
     setData(null);
     loadData();
     if (timer.current) clearInterval(timer.current);
-    timer.current = setInterval(loadData, 60_000);
+    timer.current = setInterval(() => loadData(true), 60_000);
     return () => {
       if (timer.current) clearInterval(timer.current);
     };

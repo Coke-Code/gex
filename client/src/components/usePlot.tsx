@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 
 type AxisLayout = { range?: number[]; [key: string]: unknown };
 type FigureLayout = {
@@ -52,6 +52,11 @@ export function usePlot(
   getRef.current = getFigure;
   optionsRef.current = options;
 
+  const resize = useCallback(() => {
+    const el = ref.current;
+    if (el && window.Plotly) window.Plotly.Plots.resize(el);
+  }, []);
+
   const applyView = (layout: FigureLayout): FigureLayout => ({
     ...layout,
     dragmode: "pan",
@@ -98,7 +103,15 @@ export function usePlot(
         doubleClick: false,
       })
       .then(() => {
-        if (alive && ref.current) window.Plotly.Plots.resize(ref.current);
+        if (!alive || !ref.current) return;
+        const node = ref.current;
+        node.style.height = "";
+        node.style.width = "";
+        resize();
+        requestAnimationFrame(() => {
+          resize();
+          requestAnimationFrame(resize);
+        });
       });
     const onDoubleClick = () => reset();
     const onPlotClick = (event: { points?: Array<{ x?: unknown; curveNumber?: number }> }) => {
@@ -170,9 +183,6 @@ export function usePlot(
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const resize = () => {
-      if (window.Plotly) window.Plotly.Plots.resize(el);
-    };
     const target = el.parentElement ?? el;
     const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
     observer?.observe(target);
@@ -181,9 +191,9 @@ export function usePlot(
       observer?.disconnect();
       window.removeEventListener("resize", resize);
     };
-  }, [revision]);
+  }, [revision, resize]);
 
-  return { ref, reset };
+  return { ref, reset, resize };
 }
 
 export function PlotFrame({

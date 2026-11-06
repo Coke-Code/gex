@@ -186,7 +186,7 @@ function build(slices: TermStructureSlice[], price: number) {
           font: { size: 10, color: NOTE },
         },
       ],
-      margin: { l: 56, r: 44, t: 8, b: 40 },
+      margin: { l: 48, r: 36, t: 4, b: 32 },
       paper_bgcolor: "transparent",
       plot_bgcolor: "transparent",
       showlegend: false,

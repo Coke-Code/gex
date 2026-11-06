@@ -1,3 +1,4 @@
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { ChartMarker, MarkerKind, StrikeGex } from "../types";
 import { fmtBtc, fmtPx, fmtUsd } from "./format";
 import { barColors } from "./barColor";
@@ -157,23 +158,28 @@ const LEGEND: { id: string; name: string; bg: string; ink: string; border?: stri
   { id: "GC", name: "悬崖", bg: MARK.GC.bg, ink: MARK.GC.ink },
 ];
 
-function legendPrice(markers: ChartMarker[], markerId: string, spot: number): string | null {
-  const hit = markers.find(
-    (m) => m.id === markerId && m.price > spot * 0.82 && m.price < spot * 1.18,
+function legendMarker(
+  markers: ChartMarker[],
+  markerId: string,
+  spot: number,
+): ChartMarker | null {
+  return (
+    markers.find(
+      (m) => m.id === markerId && m.price > spot * 0.82 && m.price < spot * 1.18,
+    ) ?? null
   );
-  if (!hit) return null;
-  return `${fmtPx(hit.price)}${hit.confluence ? "★" : ""}`;
 }
 
 function MarkerLegend({ markers, price }: { markers: ChartMarker[]; price: number }) {
   return (
     <div className="marker-legend" aria-label="关键点标记">
       {LEGEND.map((item) => {
-        const values = legendPrice(markers, item.id, price);
+        const hit = legendMarker(markers, item.id, price);
+        const values = hit ? fmtPx(hit.price) : null;
         return (
           <span key={item.id} className="marker-legend-item">
             <span
-              className="marker-legend-chip"
+              className={`marker-legend-chip${hit?.confluence ? " has-star" : ""}`}
               style={{
                 background: item.bg,
                 color: item.ink,
@@ -181,6 +187,11 @@ function MarkerLegend({ markers, price }: { markers: ChartMarker[]; price: numbe
               }}
             >
               {item.id}
+              {hit?.confluence ? (
+                <span className="marker-legend-star-in" aria-hidden>
+                  ★
+                </span>
+              ) : null}
             </span>
             <span className="marker-legend-copy">
               <span className="marker-legend-name">{item.name}</span>
@@ -203,12 +214,26 @@ function MarkerLegend({ markers, price }: { markers: ChartMarker[]; price: numbe
 }
 
 export default function SpaceChart(props: SpaceChartProps) {
-  const { ref, reset } = usePlot(() => build(props), `${props.revision}:scale`, {
+  const chartRef = useRef<HTMLDivElement>(null);
+  const { ref, reset, resize } = usePlot(() => build(props), `${props.revision}:scale`, {
     onPick: props.onPick,
     xHoverLabel: { y: XAXIS_POS, format: fmtPx },
   });
+
+  useLayoutEffect(() => {
+    resize();
+  }, [props.revision, props.markers, resize]);
+
+  useEffect(() => {
+    const root = chartRef.current;
+    if (!root) return;
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
+    observer?.observe(root);
+    return () => observer?.disconnect();
+  }, [resize]);
+
   return (
-    <div className="space-chart">
+    <div className="space-chart" ref={chartRef}>
       <MarkerLegend markers={props.markers} price={props.price} />
       <PlotFrame plotRef={ref} onReset={reset} />
     </div>
@@ -256,18 +281,28 @@ function build(props: SpaceChartProps) {
     yref?: string,
     confluence = false,
   ) => {
+    const borderpad = 3;
+    const fontSize = 12;
+    const charW = 6.5;
+    const starReserve = confluence ? 10 : 0;
+    const padChars = confluence
+      ? Math.max(0, Math.ceil(starReserve / charW))
+      : 0;
+    const displayText = padChars ? `${text}${"\u2009".repeat(padChars)}` : text;
+    const boxW = displayText.length * charW + borderpad * 2;
+    const boxH = fontSize + borderpad * 2;
     annotations.push({
       x,
       y,
       yref,
-      text,
+      text: displayText,
       showarrow: false,
       yshift,
-      font: { size: 12, color },
+      font: { size: fontSize, color },
       bgcolor: bg,
       bordercolor: bg,
       borderwidth: 0,
-      borderpad: 3,
+      borderpad,
     });
     if (!confluence) return;
     annotations.push({
@@ -276,9 +311,24 @@ function build(props: SpaceChartProps) {
       yref,
       text: "★",
       showarrow: false,
-      yshift,
-      xshift: 8 + text.length * 7,
-      font: { size: 13, color: STAR },
+      yshift: yshift + boxH / 2 - 5,
+      xshift: boxW / 2 - 4,
+      font: { size: 8, color: STAR },
+      bgcolor: "transparent",
+      borderwidth: 0,
+    });
+  };
+
+  const starInCircle = (x: number, y: number, yref: string | undefined, radius = 10) => {
+    annotations.push({
+      x,
+      y,
+      yref,
+      text: "★",
+      showarrow: false,
+      xshift: radius * 0.55,
+      yshift: radius * 0.55,
+      font: { size: 8, color: STAR },
       bgcolor: "transparent",
       borderwidth: 0,
     });
@@ -382,28 +432,13 @@ function build(props: SpaceChartProps) {
     if (marker.kind === "F") {
       traces.push({
         type: "scatter",
-        mode: "markers+text",
+        mode: "markers",
         x: [marker.price],
         y: [0],
-        text: [marker.id],
-        textposition: "top center",
-        textfont: { size: 13, color: style.color },
         marker: { symbol: "diamond", size: 16, color: style.color },
         hoverinfo: "skip",
       });
-      if (marker.confluence) {
-        annotations.push({
-          x: marker.price,
-          y: 0,
-          text: "★",
-          showarrow: false,
-          yshift: 20,
-          xshift: 18,
-          font: { size: 13, color: STAR },
-          bgcolor: "transparent",
-          borderwidth: 0,
-        });
-      }
+      badge(marker.price, 0, marker.id, style.ink, style.bg, -14, "paper", marker.confluence);
       continue;
     }
     if (marker.kind === "S" || marker.kind === "V") {
@@ -411,6 +446,7 @@ function build(props: SpaceChartProps) {
         marker.kind === "S"
           ? { fill: "#ffffff", ink: "#1A1A1A", line: { width: 1, color: "#1A1A1A" } }
           : { fill: style.bg, ink: style.ink, line: { width: 0, color: style.bg } };
+      const circleSize = marker.confluence ? 24 : 20;
       traces.push({
         type: "scatter",
         mode: "markers+text",
@@ -419,22 +455,10 @@ function build(props: SpaceChartProps) {
         text: [marker.id],
         textposition: "middle center",
         textfont: { size: 11, color: axisTag.ink },
-        marker: { symbol: "circle", size: 20, color: axisTag.fill, line: axisTag.line },
+        marker: { symbol: "circle", size: circleSize, color: axisTag.fill, line: axisTag.line },
         hoverinfo: "skip",
       });
-      if (marker.confluence) {
-        annotations.push({
-          x: marker.price,
-          y: 0,
-          text: "★",
-          showarrow: false,
-          yshift: 14,
-          xshift: 16,
-          font: { size: 13, color: STAR },
-          bgcolor: "transparent",
-          borderwidth: 0,
-        });
-      }
+      if (marker.confluence) starInCircle(marker.price, 0, "paper", circleSize / 2);
       continue;
     }
   }
@@ -484,7 +508,7 @@ function build(props: SpaceChartProps) {
       },
       shapes,
       annotations,
-      margin: { l: 56, r: 12, t: 8, b: 36 },
+      margin: { l: 48, r: 8, t: 4, b: 28 },
       paper_bgcolor: "transparent",
       plot_bgcolor: "transparent",
       showlegend: false,

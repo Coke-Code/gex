@@ -185,7 +185,7 @@ function build(
         },
       ],
       annotations,
-      margin: { l: 58, r: 12, t: 8, b: 36 },
+      margin: { l: 50, r: 8, t: 4, b: 28 },
       paper_bgcolor: "transparent",
       plot_bgcolor: "transparent",
       showlegend: false,
