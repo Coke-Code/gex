@@ -896,8 +896,8 @@
     font-size: 10px;
   }
 
-  /* Plotly chart height */
-  .js-plotly-plot {
+  /* Plotly chart height (legacy gex-app only; board charts size in panel) */
+  .gex-app .js-plotly-plot {
     max-height: 380px !important;
   }
 }
@@ -1410,8 +1410,9 @@
 
 @media (max-width: 900px) {
   .board {
-    height: auto;
-    overflow: auto;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
   }
 
   .board-head,
@@ -1424,15 +1425,94 @@
     margin-left: 0;
   }
 
-  .board-grid--gex {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(280px, 1fr) minmax(240px, 1fr);
+  .board-main {
     overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .board-grid--gex > .panel,
+  .board-pane {
+    overflow: visible;
+  }
+
+  .board-grid {
+    overflow: visible;
+    flex: none;
+  }
+
+  .board-grid--gex {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: visible;
+  }
+
   .board-grid--term > .panel {
     height: auto;
-    min-height: 280px;
+    min-height: min(420px, 55dvh);
+  }
+
+  .board-grid--gex > .panel {
+    height: auto;
+    max-height: none;
+    flex: none;
+  }
+
+  .board-grid--gex > .space-panel {
+    min-height: min(520px, 62dvh);
+  }
+
+  .board-grid--gex > .forecast-panel {
+    min-height: min(340px, 42dvh);
+  }
+
+  .space-panel .space-chart {
+    min-height: 400px;
+  }
+
+  .space-panel .plot-wrap {
+    min-height: 300px;
+    flex: 1 1 auto;
+  }
+
+  .space-panel .panel-h-sub {
+    font-size: 11px;
+  }
+
+  .marker-legend {
+    max-height: 108px;
+    overflow-y: auto;
+    gap: 6px 8px;
+    padding: 2px 8px 6px;
+  }
+
+  .marker-legend-name,
+  .marker-legend-val {
+    font-size: 10px;
+  }
+
+  .marker-legend-chip {
+    min-width: 1.55rem;
+    min-height: 1.45rem;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 768px) {
+  .board-grid--gex > .space-panel {
+    min-height: min(560px, 68dvh);
+  }
+
+  .space-panel .space-chart {
+    min-height: 440px;
+  }
+
+  .space-panel .plot-wrap {
+    min-height: 320px;
+  }
+
+  .board .plot-wrap .plot,
+  .board .plot-wrap .js-plotly-plot {
+    max-height: none !important;
   }
 }

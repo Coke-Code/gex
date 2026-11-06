@@ -137,16 +137,31 @@ export function usePlot(
       if (typeof x === "number") setXHoverLabel(x);
     };
     const onPlotUnhover = () => setXHoverLabel(null);
+    const clearPlotHover = () => {
+      onPlotUnhover();
+      if (window.Plotly?.Fx?.hover) {
+        window.Plotly.Fx.hover(plot, []);
+      }
+    };
+    const onOutsidePointer = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (target && el.contains(target)) return;
+      clearPlotHover();
+    };
     plot.addEventListener("dblclick", onDoubleClick);
     plot.on?.("plotly_click", onPlotClick);
     plot.on?.("plotly_hover", onPlotHover);
     plot.on?.("plotly_unhover", onPlotUnhover);
+    document.addEventListener("mousedown", onOutsidePointer);
+    document.addEventListener("touchstart", onOutsidePointer, { passive: true });
     return () => {
       alive = false;
       plot.removeEventListener("dblclick", onDoubleClick);
       plot.removeListener?.("plotly_click", onPlotClick);
       plot.removeListener?.("plotly_hover", onPlotHover);
       plot.removeListener?.("plotly_unhover", onPlotUnhover);
+      document.removeEventListener("mousedown", onOutsidePointer);
+      document.removeEventListener("touchstart", onOutsidePointer);
     };
     // reset reads the saved ranges from refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps

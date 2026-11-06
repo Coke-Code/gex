@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useRef } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 const PAD = 12;
 const GAP = 6;
@@ -6,11 +6,24 @@ const GAP = 6;
 export function HelpTip({ children }: { children: ReactNode }) {
   const rootRef = useRef<HTMLSpanElement>(null);
   const popRef = useRef<HTMLSpanElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+
+  const hidePop = useCallback(() => {
+    const pop = popRef.current;
+    if (!pop) return;
+    pop.style.display = "none";
+    pop.style.visibility = "";
+    pop.style.left = "";
+    pop.style.top = "";
+    pop.style.position = "";
+    setOpen(false);
+  }, []);
 
   const alignPop = useCallback(() => {
     const root = rootRef.current;
     const pop = popRef.current;
-    const btn = root?.querySelector<HTMLElement>(".help-tip-btn");
+    const btn = btnRef.current;
     if (!root || !pop || !btn) return;
 
     pop.style.display = "block";
@@ -35,27 +48,52 @@ export function HelpTip({ children }: { children: ReactNode }) {
     pop.style.left = `${left}px`;
     pop.style.top = `${top}px`;
     pop.style.visibility = "visible";
+    setOpen(true);
   }, []);
 
-  const hidePop = useCallback(() => {
-    const pop = popRef.current;
-    if (!pop) return;
-    pop.style.display = "none";
-    pop.style.visibility = "";
-    pop.style.left = "";
-    pop.style.top = "";
-  }, []);
+  useEffect(() => {
+    if (!open) return;
+    const onOutside = (event: MouseEvent | TouchEvent) => {
+      const root = rootRef.current;
+      if (root?.contains(event.target as Node)) return;
+      hidePop();
+      btnRef.current?.blur();
+    };
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("touchstart", onOutside, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("touchstart", onOutside);
+    };
+  }, [open, hidePop]);
 
-  const bind = {
-    onMouseEnter: alignPop,
-    onFocus: alignPop,
-    onMouseLeave: hidePop,
-    onBlur: hidePop,
+  const onBtnClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (open) {
+      hidePop();
+      btnRef.current?.blur();
+      return;
+    }
+    alignPop();
   };
 
   return (
     <span className="help-tip" ref={rootRef}>
-      <button type="button" className="help-tip-btn" aria-label="怎么看" {...bind}>
+      <button
+        ref={btnRef}
+        type="button"
+        className="help-tip-btn"
+        aria-label="怎么看"
+        aria-expanded={open}
+        onClick={onBtnClick}
+        onMouseEnter={alignPop}
+        onMouseLeave={hidePop}
+        onFocus={alignPop}
+        onBlur={(event) => {
+          if (!rootRef.current?.contains(event.relatedTarget as Node)) hidePop();
+        }}
+      >
         ?
       </button>
       <span className="help-tip-pop" ref={popRef} role="tooltip">
