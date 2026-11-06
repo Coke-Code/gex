@@ -25,10 +25,10 @@ const HELP = {
   skew: "近端 25Δ 风险逆转（RR）。为正表示防跌期权更贵，为负表示追涨期权更贵。",
   venueFlip: "各交易所用自己的持仓单独算的翻转价，和顶栏聚合翻转可能不一致。",
   space:
-    "上：各行权价的净 Gamma 对冲（±1% 波动），柱色深浅表示强度；下：绝对 Gamma。虚线=现价，浅带=一日预期波动。图例是算法标出的关键点及当前价位；点一根柱可看到期拆分。",
+    "上：各行权价的净 Gamma 对冲（±1% 波动），柱色深浅表示强度；下：绝对 Gamma 曲线。虚线=现价；「±1日」文字=一日预期波动距离（无底色）。绿/橘红/蓝竖带分别是 P1–P2、N1–N2、A1–A2 双峰区间。图例为算法关键点及当前价位；点柱看到期拆分。",
   time: "最近 8 个到期日：柱=该日净 Gamma 对冲，色柱规则与空间图相同；黑线=平值 IV。悬停可看涨跌各需买/卖多少。",
   speed:
-    "横轴是「若现货在这里」；纵轴是该价位下的净 Gamma 对冲。曲线越陡，Gamma 变越快。虚线=现价，紫线=翻转。副标题对比先动 1% 后再动 1% 与现在的差别。",
+    "不是成交速度。横轴=若现货在这里；纵轴=该价位下的净 Gamma 对冲（±1% 美元量）。曲线越陡，对冲需求随价位变化越快。虚线=现价，紫线=翻转。副标题「至 ±1% 档」=移到 ±1% 情景后的对冲量，括号 Δ 为与现在的差。",
 } as const;
 
 const REFRESH_SECONDS = 60;
@@ -313,7 +313,7 @@ function speedNote(data: GexAnalysis | null | undefined): string {
   const afterUp = gexAtSpotOnCurve(data.gammaCurve, price * 1.01);
   const afterDown = gexAtSpotOnCurve(data.gammaCurve, price * 0.99);
   if (afterUp == null || afterDown == null) return base;
-  return `${base} · 涨后+1% ${fmtUsd(Math.abs(afterUp))}（${fmtSpeedDelta(afterUp - net)}）· 跌后+1% ${fmtUsd(Math.abs(afterDown))}（${fmtSpeedDelta(afterDown - net)}）`;
+  return `${base} · 至+1%档 ${fmtUsd(Math.abs(afterUp))}（${fmtSpeedDelta(afterUp - net)}）· 至−1%档 ${fmtUsd(Math.abs(afterDown))}（${fmtSpeedDelta(afterDown - net)}）`;
 }
 
 function gapText(price: number, flip: number): string {
