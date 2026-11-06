@@ -16,6 +16,9 @@ interface Window {
     Plots: {
       resize: (div: PlotlyHTMLElement) => void;
     };
+    Fx?: {
+      hover: (div: PlotlyHTMLElement, pts?: unknown[]) => void;
+    };
     relayout: (div: PlotlyHTMLElement | null, update: Record<string, unknown>) => Promise<unknown>;
     newPlot: (
       div: PlotlyHTMLElement | null,
