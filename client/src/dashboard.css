@@ -1857,8 +1857,53 @@
     display: flex;
   }
 
+  .board-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    box-shadow: 0 1px 0 var(--border);
+  }
+
   .board .plot-wrap {
     touch-action: pan-y pinch-zoom;
+    flex: none !important;
+  }
+
+  .panel {
+    overflow: visible;
+  }
+
+  .space-chart,
+  .term-structure-chart,
+  .expiry-metrics-chart,
+  .gex-change-chart {
+    flex: none;
+  }
+
+  .space-panel .plot-wrap {
+    height: 280px;
+    min-height: 280px;
+    max-height: 280px;
+  }
+
+  .forecast-panel .plot-wrap,
+  .term-metrics-panel .plot-wrap {
+    height: 220px;
+    min-height: 220px;
+    max-height: 220px;
+  }
+
+  .term-structure-panel .plot-wrap,
+  .change-map-panel .plot-wrap {
+    height: 300px;
+    min-height: 300px;
+    max-height: 300px;
+  }
+
+  .board .plot-wrap .plot,
+  .board .plot-wrap .js-plotly-plot {
+    height: 100% !important;
+    max-height: 100% !important;
   }
 
   .summary-module-panel .summary-module-scroll {
@@ -1910,23 +1955,7 @@
   .change-map-panel .gex-change-chart,
   .term-structure-panel .term-structure-chart,
   .term-metrics-panel .expiry-metrics-chart {
-    min-height: 260px;
-  }
-
-  .change-map-panel .plot-wrap,
-  .term-structure-panel .plot-wrap,
-  .term-metrics-panel .plot-wrap {
-    min-height: 220px;
-    flex: 1 1 auto;
-  }
-
-  .space-panel .space-chart {
-    min-height: 360px;
-  }
-
-  .space-panel .plot-wrap {
-    min-height: 260px;
-    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .space-panel .panel-h-sub {
@@ -1952,29 +1981,15 @@
 }
 
 @media (max-width: 768px) {
-  .board-grid--triple > .term-structure-panel,
-  .board-grid--triple > .space-panel {
-    min-height: min(500px, 62dvh);
-  }
-
-  .term-structure-panel .term-structure-chart {
-    min-height: 380px;
+  .space-panel .plot-wrap {
+    height: 300px;
+    min-height: 300px;
+    max-height: 300px;
   }
 
   .term-structure-panel .plot-wrap {
-    min-height: 280px;
-  }
-
-  .space-panel .space-chart {
-    min-height: 380px;
-  }
-
-  .space-panel .plot-wrap {
-    min-height: 280px;
-  }
-
-  .board .plot-wrap .plot,
-  .board .plot-wrap .js-plotly-plot {
-    max-height: none !important;
+    height: 320px;
+    min-height: 320px;
+    max-height: 320px;
   }
 }

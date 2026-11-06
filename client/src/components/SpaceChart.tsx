@@ -3,6 +3,7 @@ import { ChartMarker, MarkerKind, StrikeGex } from "../types";
 import { fmtBtc, fmtPx, fmtUsd } from "./format";
 import { barColors } from "./barColor";
 import { AXIS, GRID, HOVER_BG, HOVER_BORDER, INK, LABEL_BG, NOTE, ZERO } from "./palette";
+import { touchScrollFriendly } from "./plotTouch";
 import { PlotFrame, usePlot } from "./usePlot.tsx";
 
 interface SpaceChartProps {
@@ -225,6 +226,7 @@ export default function SpaceChart(props: SpaceChartProps) {
   }, [props.revision, props.markers, resize]);
 
   useEffect(() => {
+    if (touchScrollFriendly()) return;
     const root = chartRef.current;
     if (!root) return;
     const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
@@ -419,14 +421,6 @@ function build(props: SpaceChartProps) {
         line: { width: 0 },
       });
       badge(marker.price, XAXIS_POS - 0.01, marker.id, style.ink, style.bg, 0, "paper", marker.confluence);
-      traces.push({
-        type: "scatter",
-        mode: "markers",
-        x: [marker.price],
-        y: [0],
-        marker: { size: 7, color: style.color },
-        hoverinfo: "skip",
-      });
       continue;
     }
     if (marker.kind === "F") {

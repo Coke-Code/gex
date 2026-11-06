@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { plotDragMode, touchScrollFriendly } from "./plotTouch";
 
 type AxisLayout = { range?: number[]; [key: string]: unknown };
 type FigureLayout = {
@@ -38,16 +39,6 @@ type PlotOptions = {
   xHoverLabel?: { y: number; format: (x: number) => string };
 };
 
-/** 手机/触控：关闭 Plotly 拖拽，让整页在 chart 上也能纵向滚动 */
-function touchScrollFriendly(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia("(max-width: 900px), (pointer: coarse)").matches;
-}
-
-function plotDragMode(): false | "pan" {
-  return touchScrollFriendly() ? false : "pan";
-}
-
 export function usePlot(
   getFigure: () => { traces: unknown[]; layout: FigureLayout },
   revision: string,
@@ -70,6 +61,7 @@ export function usePlot(
   const applyView = (layout: FigureLayout): FigureLayout => ({
     ...layout,
     dragmode: plotDragMode(),
+    ...(touchScrollFriendly() ? { hovermode: false } : {}),
     uirevision: `${home.current.key}@${generation.current}`,
   });
 
@@ -174,18 +166,23 @@ export function usePlot(
     };
     plot.addEventListener("dblclick", onDoubleClick);
     plot.on?.("plotly_click", onPlotClick);
-    plot.on?.("plotly_hover", onPlotHover);
-    plot.on?.("plotly_unhover", onPlotUnhover);
-    document.addEventListener("mousedown", onOutsidePointer);
-    document.addEventListener("touchstart", onOutsidePointer, { passive: true });
+    const touchScroll = touchScrollFriendly();
+    if (!touchScroll) {
+      plot.on?.("plotly_hover", onPlotHover);
+      plot.on?.("plotly_unhover", onPlotUnhover);
+      document.addEventListener("mousedown", onOutsidePointer);
+      document.addEventListener("touchstart", onOutsidePointer, { passive: true });
+    }
     return () => {
       alive = false;
       plot.removeEventListener("dblclick", onDoubleClick);
       plot.removeListener?.("plotly_click", onPlotClick);
-      plot.removeListener?.("plotly_hover", onPlotHover);
-      plot.removeListener?.("plotly_unhover", onPlotUnhover);
-      document.removeEventListener("mousedown", onOutsidePointer);
-      document.removeEventListener("touchstart", onOutsidePointer);
+      if (!touchScroll) {
+        plot.removeListener?.("plotly_hover", onPlotHover);
+        plot.removeListener?.("plotly_unhover", onPlotUnhover);
+        document.removeEventListener("mousedown", onOutsidePointer);
+        document.removeEventListener("touchstart", onOutsidePointer);
+      }
     };
     // reset reads the saved ranges from refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -194,6 +191,18 @@ export function usePlot(
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+
+    if (touchScrollFriendly()) {
+      requestAnimationFrame(resize);
+      const onViewport = () => requestAnimationFrame(resize);
+      window.addEventListener("orientationchange", onViewport);
+      window.visualViewport?.addEventListener("resize", onViewport);
+      return () => {
+        window.removeEventListener("orientationchange", onViewport);
+        window.visualViewport?.removeEventListener("resize", onViewport);
+      };
+    }
+
     const target = el.parentElement ?? el;
     const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
     observer?.observe(target);

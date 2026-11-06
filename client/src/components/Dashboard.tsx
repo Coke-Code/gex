@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useGexData } from "../hooks/useGexData";
 import {
   GexAnalysis,
@@ -201,39 +201,30 @@ export default function Dashboard() {
       )}
 
       <nav className="board-tabs" role="tablist" aria-label="图表视图">
-        <button
-          type="button"
-          role="tab"
-          id="board-tab-gex"
-          aria-selected={tab === "gex"}
-          aria-controls="board-panel-gex"
-          className={`board-tab${tab === "gex" ? " is-active" : ""}`}
-          onClick={() => selectTab("gex")}
+        <BoardTabButton
+          tabId="board-tab-gex"
+          panelId="board-panel-gex"
+          active={tab === "gex"}
+          onSelect={() => selectTab("gex")}
         >
           Gex Level
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="board-tab-term"
-          aria-selected={tab === "term"}
-          aria-controls="board-panel-term"
-          className={`board-tab${tab === "term" ? " is-active" : ""}`}
-          onClick={() => selectTab("term")}
+        </BoardTabButton>
+        <BoardTabButton
+          tabId="board-tab-term"
+          panelId="board-panel-term"
+          active={tab === "term"}
+          onSelect={() => selectTab("term")}
         >
           Term Structure
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="board-tab-change"
-          aria-selected={tab === "change"}
-          aria-controls="board-panel-change"
-          className={`board-tab${tab === "change" ? " is-active" : ""}`}
-          onClick={() => selectTab("change")}
+        </BoardTabButton>
+        <BoardTabButton
+          tabId="board-tab-change"
+          panelId="board-panel-change"
+          active={tab === "change"}
+          onSelect={() => selectTab("change")}
         >
           Gex Change
-        </button>
+        </BoardTabButton>
       </nav>
 
       <main className="board-main">
@@ -403,6 +394,37 @@ export default function Dashboard() {
         数字是「每 1% 波动」要对冲的美元量：涨、跌方向相反，幅度一样。绿柱正 Gamma 时涨卖跌买。未平仓有数小时延迟，只供看结构。
       </footer>
     </div>
+  );
+}
+
+function BoardTabButton({
+  tabId,
+  panelId,
+  active,
+  onSelect,
+  children,
+}: {
+  tabId: string;
+  panelId: string;
+  active: boolean;
+  onSelect: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      id={tabId}
+      aria-selected={active}
+      aria-controls={panelId}
+      className={`board-tab${active ? " is-active" : ""}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect();
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
