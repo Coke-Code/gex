@@ -26,6 +26,7 @@ export interface ExpirySlice {
   days: number;
   netGex: number;
   absGex: number;
+  oi: number;
   atmIv: number | null;
 }
 

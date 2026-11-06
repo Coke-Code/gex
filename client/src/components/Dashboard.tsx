@@ -13,6 +13,12 @@ import { HelpTip } from "./HelpTip";
 import SpaceChart from "./SpaceChart";
 import SpeedChart from "./SpeedChart";
 import TermStructureChart from "./TermStructureChart";
+import ExpiryMetricsChart from "./ExpiryMetricsChart";
+import GexChangeChart from "./GexChangeChart";
+import GexChangeMovers from "./GexChangeMovers";
+import SummaryModuleCard from "./SummaryModuleCard";
+import { buildGexSummary } from "./gexSummary";
+import { BtcIcon, VenueFilterIcon, VenueIcon } from "./MarketIcons";
 
 const HELP = {
   flip: "净 Gamma 从正变负（或反过来）的价位。多在翻转上方波动偏小、下方偏大。数字距现货越远，短期越难「贴」着走。",
@@ -27,14 +33,19 @@ const HELP = {
   space:
     "上：各行权价的净 Gamma 对冲（±1% 波动），柱色深浅表示强度；下：绝对 Gamma 曲线。虚线=现价；「±1日」文字=一日预期波动距离（无底色）。绿/橘红/蓝竖带分别是 P1–P2、N1–N2、A1–A2 双峰区间。图例为算法关键点及当前价位；点柱看到期拆分。",
   term:
-    "Term Structure：横轴到期（含 TOTAL 全链），纵轴价位。绿带=正峰 P1–P2，红带=负峰 N1–N2，紫线=Flip。虚线=现货；悬停看张数与 OI 延迟说明。",
+    "Term Structure（GammaFlip 风格）：横轴到期（含 TOTAL），纵轴价位。绿带 Positive peaks（P1–P2）、红带 Negative peaks（N1–N2）、Flip 线；右缘为带内说明。虚线=现货，左轴该高度标现价。",
+  termMetrics: "各到期净 GEX（柱）与未平仓币数（线，右轴）。与左侧期限图并排，比例同 Gex Level 空间/预测。",
+  change:
+    "相对本地历史快照（约 4h 内最近一条）的净 GEX 变动，仅「全部」venue。左：按行权价的 Δ 柱（类似空间图）；右：|Δ| 最大的行权价排行。",
+  summaryModule:
+    "由当前快照规则生成的摘要与交易参考，非投资建议。与同页图表同源数据。",
   forecast:
     "Net GEX Forecast（Gamma Profile）：假想现货在各价位时的净 Gamma 对冲。绿区 Sticky（正 GEX），红区 Jumpy（负 GEX）。曲线为展示样条，底层仍按 0.5% 步长计算。虚线=现价。",
 } as const;
 
 const REFRESH_SECONDS = 60;
 const PILLS: VenueFilter[] = ["all", "deribit", "binance", "okx"];
-type BoardTab = "gex" | "term";
+type BoardTab = "gex" | "term" | "change";
 
 export default function Dashboard() {
   const { data, loading, error, refresh, venue, setVenue } = useGexData();
@@ -74,12 +85,16 @@ export default function Dashboard() {
   const pickedRow = data?.strikes.find((row) => row.strike === picked) ?? null;
   const oneDay = data?.move?.oneDay ?? null;
   const changeLabel = data?.change ? fmtAge(data.change.ageHours) : null;
+  const summaryPack =
+    data && price > 0 && data.quality.contractsUsed > 0
+      ? buildGexSummary(data, venue)
+      : null;
 
   return (
     <div className="board">
       <header className="board-head">
         <div className="board-id">
-          <span className="board-mark">BTC</span>
+          <BtcIcon size={24} className="board-btc-icon" />
           <span className="board-px">{price > 0 ? fmtPx(price) : "—"}</span>
           {data && data.quality.contractsUsed > 0 && (
             <Regime pressure={data.hedgingPressure} />
@@ -93,7 +108,8 @@ export default function Dashboard() {
               className={pillClass(item, venue, data?.venues)}
               onClick={() => setVenue(item)}
             >
-              {VENUE_LABEL[item]}
+              <VenueFilterIcon venue={item} size={15} />
+              <span className="board-pill-label">{VENUE_LABEL[item]}</span>
             </button>
           ))}
         </div>
@@ -150,9 +166,16 @@ export default function Dashboard() {
                 <HelpTip>{HELP.venueFlip}</HelpTip>
               </span>
               <span className="stat-v venue-flip-v">
-                {flips
-                  .map((item) => `${VENUE_LABEL[item.venue]} ${fmtPx(item.flipPoint ?? 0)}`)
-                  .join(" · ")}
+                {flips.map((item) => (
+                  <span
+                    key={item.venue}
+                    className="venue-flip-chip"
+                    title={`${VENUE_LABEL[item.venue]} Flip`}
+                  >
+                    <VenueIcon venue={item.venue} size={16} />
+                    <span>{fmtPx(item.flipPoint ?? 0)}</span>
+                  </span>
+                ))}
               </span>
               <span className="stat-s">各所自己的持仓，不是聚合价</span>
             </div>
@@ -191,6 +214,15 @@ export default function Dashboard() {
         >
           Term Structure
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "change"}
+          className={`board-tab${tab === "change" ? " is-active" : ""}`}
+          onClick={() => setTab("change")}
+        >
+          Gex Change
+        </button>
       </nav>
 
       <main className="board-main">
@@ -199,8 +231,8 @@ export default function Dashboard() {
           role="tabpanel"
           hidden={tab !== "gex"}
         >
-          <div className="board-grid board-grid--gex">
-            <section className="panel space-panel">
+          <div className="board-grid board-grid--triple">
+            <section className="panel space-panel panel--main">
               <PanelTitle
                 k="空间"
                 help={HELP.space}
@@ -229,7 +261,7 @@ export default function Dashboard() {
                 <Empty loading={loading} />
               )}
             </section>
-            <section className="panel forecast-panel">
+            <section className="panel forecast-panel panel--side-top">
               <PanelTitle k="预测" help={HELP.forecast} s={speedNote(data)} />
               {data && price > 0 && data.gammaCurve.length > 0 ? (
                 <SpeedChart
@@ -243,6 +275,14 @@ export default function Dashboard() {
                 <Empty loading={loading} />
               )}
             </section>
+            <section className="panel summary-module-panel panel--side-summary">
+              <PanelTitle
+                k={summaryPack?.modules[0].title ?? "摘要"}
+                help={HELP.summaryModule}
+                s={summaryPack?.modules[0].lead ?? "波动环境"}
+              />
+              <SummaryModuleCard module={summaryPack?.modules[0] ?? null} />
+            </section>
           </div>
         </div>
         <div
@@ -250,8 +290,8 @@ export default function Dashboard() {
           role="tabpanel"
           hidden={tab !== "term"}
         >
-          <div className="board-grid board-grid--term">
-            <section className="panel term-panel">
+          <div className="board-grid board-grid--triple">
+            <section className="panel term-structure-panel panel--main">
               <PanelTitle
                 k="期限"
                 help={HELP.term}
@@ -266,6 +306,71 @@ export default function Dashboard() {
               ) : (
                 <Empty loading={loading} />
               )}
+            </section>
+            <section className="panel term-metrics-panel panel--side-top">
+              <PanelTitle k="到期 NET / OI" help={HELP.termMetrics} s="净 GEX · OI（BTC）" />
+              {data && data.expiries.length > 0 && price > 0 ? (
+                <ExpiryMetricsChart expiries={data.expiries} revision={revision} />
+              ) : (
+                <Empty loading={loading} />
+              )}
+            </section>
+            <section className="panel summary-module-panel panel--side-summary">
+              <PanelTitle
+                k={summaryPack?.modules[1].title ?? "摘要"}
+                help={HELP.summaryModule}
+                s={summaryPack?.modules[1].lead ?? "关键价位"}
+              />
+              <SummaryModuleCard module={summaryPack?.modules[1] ?? null} />
+            </section>
+          </div>
+        </div>
+        <div
+          className={`board-pane${tab === "change" ? " is-active" : ""}`}
+          role="tabpanel"
+          hidden={tab !== "change"}
+        >
+          <div className="board-grid board-grid--triple">
+            <section className="panel change-map-panel panel--main">
+              <PanelTitle
+                k="Δ 空间"
+                help={HELP.change}
+                s={changeMapNote(data, venue, changeLabel)}
+              />
+              {data && price > 0 && venue === "all" && data.change ? (
+                <GexChangeChart
+                  strikes={data.strikes}
+                  price={price}
+                  ageHours={data.change.ageHours}
+                  revision={revision}
+                />
+              ) : (
+                <ChangeEmpty loading={loading} venue={venue} hasChange={Boolean(data?.change)} />
+              )}
+            </section>
+            <section className="panel change-movers-panel panel--side-top">
+              <PanelTitle
+                k="变动排行"
+                s="±25% 内 |Δ| 前 10 · 柱长=相对最大变动"
+              />
+              {data && price > 0 && venue === "all" && data.change && changeLabel ? (
+                <GexChangeMovers
+                  strikes={data.strikes}
+                  price={price}
+                  ageLabel={changeLabel}
+                  spotThen={data.change.price}
+                />
+              ) : (
+                <ChangeEmpty loading={loading} venue={venue} hasChange={Boolean(data?.change)} />
+              )}
+            </section>
+            <section className="panel summary-module-panel panel--side-summary">
+              <PanelTitle
+                k={summaryPack?.modules[2].title ?? "摘要"}
+                help={HELP.summaryModule}
+                s={summaryPack?.modules[2].lead ?? "流向与变化"}
+              />
+              <SummaryModuleCard module={summaryPack?.modules[2] ?? null} />
             </section>
           </div>
         </div>
@@ -328,6 +433,39 @@ function Empty({ loading }: { loading: boolean }) {
   return <div className="panel-empty">{loading ? "正在读取 BTC 期权…" : "这个来源没有可用持仓"}</div>;
 }
 
+function ChangeEmpty({
+  loading,
+  venue,
+  hasChange,
+}: {
+  loading: boolean;
+  venue: VenueFilter;
+  hasChange: boolean;
+}) {
+  if (loading) return <div className="panel-empty">正在读取 BTC 期权…</div>;
+  if (venue !== "all") {
+    return <div className="panel-empty">GEX 变化仅「全部」聚合。请切到全部 venue。</div>;
+  }
+  if (!hasChange) {
+    return (
+      <div className="panel-empty">
+        本地还没有历史快照。服务运行数小时后会自动存盘，并与约 4 小时前最近一条对比。
+      </div>
+    );
+  }
+  return <div className="panel-empty">暂无可用数据</div>;
+}
+
+function changeMapNote(
+  data: GexAnalysis | null,
+  venue: VenueFilter,
+  changeLabel: string | null,
+): string {
+  if (venue !== "all") return "需「全部」venue";
+  if (!data?.change || !changeLabel) return "等待历史基准";
+  return `较 ${changeLabel}前 · 现货 ±25% · 绿增红减`;
+}
+
 function pillClass(
   item: VenueFilter,
   selected: VenueFilter,
@@ -353,7 +491,7 @@ function hedgeBothWays(net: number): string {
 }
 
 function termStructureNote(slices: GexAnalysis["termStructure"] | undefined): string {
-  if (!slices || slices.length === 0) return "近端到期 · 绿/红带与 Flip（展示用样条）";
+  if (!slices || slices.length === 0) return "近端到期 · P/N/A 带、Flip、Max Pain";
   const rows = slices.length;
   const contracts = slices.reduce((sum, row) => sum + row.contractsUsed, 0);
   const partial = slices.filter((row) => row.qualityNote?.includes("缺")).length;

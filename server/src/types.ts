@@ -65,6 +65,8 @@ export interface ExpirySlice {
   days: number;
   netGex: number;
   absGex: number;
+  /** 未平仓，币 */
+  oi: number;
   /** 平值隐含波动率，小数 */
   atmIv: number | null;
 }

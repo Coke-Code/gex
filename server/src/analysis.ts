@@ -87,6 +87,7 @@ function buildExpiries(used: UsedOption[], nowMs: number): ExpirySlice[] {
       days: Math.max(0, (expiryTimestamp - nowMs) / (24 * 60 * 60 * 1000)),
       netGex: options.reduce((sum, option) => sum + option.gex, 0),
       absGex: options.reduce((sum, option) => sum + Math.abs(option.gex), 0),
+      oi: options.reduce((sum, option) => sum + option.openInterest, 0),
       atmIv: atmIv.length
         ? atmIv.reduce((sum, iv) => sum + iv, 0) / atmIv.length
         : null,
@@ -377,19 +378,13 @@ export function analyzeChain(input: {
       days: 0,
       contractsUsed: used.length,
       flipPoint: zero?.flipPoint ?? null,
-      maxPain: maxPain(
-        termOptions.map((row) => ({
-          strike: row.strike,
-          optionType: row.optionType,
-          openInterest: row.openInterest,
-        })),
-      ),
+      maxPain: null,
       markers: chartMarkers(
         strikes,
         gammaCurve,
         zero?.flipPoint ?? null,
         indexPrice,
-      ).filter((marker) => marker.kind === "P" || marker.kind === "N" || marker.kind === "F"),
+      ).filter((marker) => marker.kind === "P" || marker.kind === "N" || marker.kind === "A" || marker.kind === "F"),
       qualityNote: null,
     });
   }

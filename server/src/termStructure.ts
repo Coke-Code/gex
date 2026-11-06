@@ -9,7 +9,7 @@ import {
 } from "./greeks/exposure";
 import { ChartMarker, ExchangeSource, TermStructureSlice } from "./types";
 
-const TERM_MARKERS = new Set<ChartMarker["kind"]>(["P", "N", "F"]);
+const TERM_MARKERS = new Set<ChartMarker["kind"]>(["P", "N", "A", "F"]);
 const MAX_SLICES = 14;
 const MIN_CONTRACTS = 4;
 
