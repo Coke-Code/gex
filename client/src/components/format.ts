@@ -27,6 +27,25 @@ export function fmtAge(hours: number): string {
   return `${Math.round(hours)} 小时`;
 }
 
+import { GammaCurvePoint } from "../types";
+
+/** 在 gamma 曲线上按现货插值，和 server 的 gexAtSpotOnCurve 一致。 */
+export function gexAtSpotOnCurve(curve: GammaCurvePoint[], spot: number): number | null {
+  if (curve.length === 0 || !(spot > 0)) return null;
+  if (spot <= curve[0].spot) return curve[0].totalNetGex;
+  const last = curve[curve.length - 1];
+  if (spot >= last.spot) return last.totalNetGex;
+  for (let i = 1; i < curve.length; i++) {
+    const left = curve[i - 1];
+    const right = curve[i];
+    if (spot > right.spot) continue;
+    const span = right.spot - left.spot;
+    const weight = span === 0 ? 0 : (spot - left.spot) / span;
+    return left.totalNetGex + (right.totalNetGex - left.totalNetGex) * weight;
+  }
+  return last.totalNetGex;
+}
+
 export function fmtTenor(days: number): string {
   if (days < 1) return `${Math.max(1, Math.round(days * 24))}小时`;
   if (days < 10) return `${days.toFixed(days < 2 ? 1 : 0)}天`;

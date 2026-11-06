@@ -1,10 +1,35 @@
 import { useEffect, useState } from "react";
 import { useGexData } from "../hooks/useGexData";
-import { StrikeExpiry, StrikeGex, VENUE_LABEL, VenueFilter, VenueStatus } from "../types";
-import { fmtAge, fmtBtc, fmtPx, fmtTenor, fmtUsd } from "./format";
+import {
+  GexAnalysis,
+  StrikeExpiry,
+  StrikeGex,
+  VENUE_LABEL,
+  VenueFilter,
+  VenueStatus,
+} from "../types";
+import { fmtAge, fmtBtc, fmtPx, fmtTenor, fmtUsd, gexAtSpotOnCurve } from "./format";
+import { HelpTip } from "./HelpTip";
 import SpaceChart from "./SpaceChart";
 import SpeedChart from "./SpeedChart";
 import TimeChart from "./TimeChart";
+
+const HELP = {
+  flip: "净 Gamma 从正变负（或反过来）的价位。多在翻转上方波动偏小、下方偏大。数字距现货越远，短期越难「贴」着走。",
+  support:
+    "现价下方净 Gamma 最负的一档：波动容易被放大，适合当风险参考，不要当传统支撑位。",
+  resistance:
+    "现价上方净 Gamma 最正的一档：正 Gamma 倾向压制波动，价格容易被「吸」向这一带。",
+  hedge:
+    "把全市场净 Gamma 换成美元：现货涨、跌各 1% 时，做市商大概要买还是卖多少才能对冲。涨、跌方向相反，金额相同。",
+  skew: "近端 25Δ 风险逆转（RR）。为正表示防跌期权更贵，为负表示追涨期权更贵。",
+  venueFlip: "各交易所用自己的持仓单独算的翻转价，和顶栏聚合翻转可能不一致。",
+  space:
+    "上：各行权价的净 Gamma 对冲（±1% 波动），柱色深浅表示强度；下：绝对 Gamma。虚线=现价，浅带=一日预期波动。图例是算法标出的关键点及当前价位；点一根柱可看到期拆分。",
+  time: "最近 8 个到期日：柱=该日净 Gamma 对冲，色柱规则与空间图相同；黑线=平值 IV。悬停可看涨跌各需买/卖多少。",
+  speed:
+    "横轴是「若现货在这里」；纵轴是该价位下的净 Gamma 对冲。曲线越陡，Gamma 变越快。虚线=现价，紫线=翻转。副标题对比先动 1% 后再动 1% 与现在的差别。",
+} as const;
 
 const REFRESH_SECONDS = 60;
 const PILLS: VenueFilter[] = ["all", "deribit", "binance", "okx"];
@@ -73,16 +98,19 @@ export default function Dashboard() {
         <section className="board-stats">
           <Stat
             k="翻转"
+            help={HELP.flip}
             v={flip ? fmtPx(flip) : "附近没有"}
             s={flip ? flipNote(price, flip, data.change) : "±30% 内未穿过 0"}
           />
           <Stat
             k="支撑"
+            help={HELP.support}
             v={support ? fmtPx(support) : "—"}
             s={support ? levelNote(support, price, oneDay, "下方最重的负 Gamma") : "下方最重的负 Gamma"}
           />
           <Stat
             k="阻力"
+            help={HELP.resistance}
             v={resistance ? fmtPx(resistance) : "—"}
             s={
               resistance
@@ -91,13 +119,15 @@ export default function Dashboard() {
             }
           />
           <Stat
-            k={data.totalNetGex >= 0 ? "上涨 1% 卖出" : "上涨 1% 买入"}
+            k="1% 波动对冲"
+            help={HELP.hedge}
             v={fmtUsd(Math.abs(data.totalNetGex))}
-            s={data.totalNetGex >= 0 ? "做市商压制波动" : "做市商放大波动"}
+            s={hedgeBothWays(data.totalNetGex)}
             tone={data.totalNetGex >= 0 ? "green" : "red"}
           />
           <Stat
             k="偏斜"
+            help={HELP.skew}
             v={data.skew ? `${data.skew.rr >= 0 ? "+" : ""}${(data.skew.rr * 100).toFixed(1)}` : "—"}
             s={
               data.skew
@@ -107,7 +137,10 @@ export default function Dashboard() {
           />
           {flips.length >= 2 && (
             <div className="stat venue-flips">
-              <span className="stat-k">分所翻转</span>
+              <span className="stat-k">
+                分所翻转
+                <HelpTip>{HELP.venueFlip}</HelpTip>
+              </span>
               <span className="stat-v venue-flip-v">
                 {flips
                   .map((item) => `${VENUE_LABEL[item.venue]} ${fmtPx(item.flipPoint ?? 0)}`)
@@ -135,12 +168,13 @@ export default function Dashboard() {
         <section className="panel space-panel">
           <PanelTitle
             k="空间"
+            help={HELP.space}
             s={
               pickedRow
                 ? "点选的这一档"
                 : oneDay
-                  ? `一日 ±${fmtPx(oneDay)} · P/N 峰 · A 磁铁 · S 稳定 · V 放大 · GC 悬崖`
-                  : "P/N 峰 · A 磁铁 · S 稳定 · V 放大 · GC 悬崖"
+                  ? `一日 ±${fmtPx(oneDay)} · 点一根柱看到期`
+                  : "点一根柱看到期 · 标记含义见下图例"
             }
           />
           {pickedRow && <StrikeSplit row={pickedRow} changeLabel={changeLabel} />}
@@ -161,7 +195,7 @@ export default function Dashboard() {
           )}
         </section>
         <section className="panel">
-          <PanelTitle k="时间" s="Gamma 和隐波落在哪一天" />
+          <PanelTitle k="时间" help={HELP.time} s="Gamma 和隐波落在哪一天" />
           {data && data.expiries.length > 0 ? (
             <TimeChart expiries={data.expiries} revision={revision} />
           ) : (
@@ -169,14 +203,7 @@ export default function Dashboard() {
           )}
         </section>
         <section className="panel">
-          <PanelTitle
-            k="速度"
-            s={
-              data?.speed.gexChangePer1Pct == null
-                ? "价格再走，对冲额怎么变"
-                : `再涨 1%，对冲额${data.speed.gexChangePer1Pct >= 0 ? "增加" : "减少"} ${fmtUsd(Math.abs(data.speed.gexChangePer1Pct))}`
-            }
-          />
+          <PanelTitle k="速度" help={HELP.speed} s={speedNote(data)} />
           {data && price > 0 && data.gammaCurve.length > 0 ? (
             <SpeedChart
               curve={data.gammaCurve}
@@ -194,7 +221,7 @@ export default function Dashboard() {
         {data
           ? `计入 ${data.quality.contractsUsed} 张 · 剔除 ${data.quality.contractsDropped} 张 · `
           : ""}
-        绿柱是正 Gamma，价格上去做市商卖、下来买。未平仓有数小时延迟，只供看结构。
+        数字是「每 1% 波动」要对冲的美元量：涨、跌方向相反，幅度一样。绿柱正 Gamma 时涨卖跌买。未平仓有数小时延迟，只供看结构。
       </footer>
     </div>
   );
@@ -211,26 +238,34 @@ function Stat({
   v,
   s,
   tone,
+  help,
 }: {
   k: string;
   v: string;
   s: string;
   tone?: "green" | "red";
+  help?: string;
 }) {
   return (
     <div className="stat">
-      <span className="stat-k">{k}</span>
+      <span className="stat-k">
+        {k}
+        {help ? <HelpTip>{help}</HelpTip> : null}
+      </span>
       <span className={`stat-v${tone ? ` is-${tone}` : ""}`}>{v}</span>
       <span className="stat-s">{s}</span>
     </div>
   );
 }
 
-function PanelTitle({ k, s }: { k: string; s: string }) {
+function PanelTitle({ k, s, help }: { k: string; s: string; help?: string }) {
   return (
     <div className="panel-h">
-      <strong>{k}</strong>
-      <span>{s}</span>
+      <div className="panel-h-row">
+        <strong className="panel-h-k">{k}</strong>
+        {help ? <HelpTip>{help}</HelpTip> : null}
+      </div>
+      <span className="panel-h-sub">{s}</span>
     </div>
   );
 }
@@ -255,6 +290,30 @@ function pillClass(
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+function hedgeBothWays(net: number): string {
+  const amt = fmtUsd(Math.abs(net));
+  if (net >= 0) return `涨 1% 卖 ${amt} · 跌 1% 买 ${amt} · 压制波动`;
+  return `涨 1% 买 ${amt} · 跌 1% 卖 ${amt} · 放大波动`;
+}
+
+function fmtSpeedDelta(d: number): string {
+  return `Δ${d >= 0 ? "+" : "−"}${fmtUsd(Math.abs(d))}`;
+}
+
+function speedNote(data: GexAnalysis | null | undefined): string {
+  if (!data || !(data.underlyingPrice > 0)) return "±1% 对冲，涨跌方向相反";
+  const net = data.totalNetGex;
+  const amt = fmtUsd(Math.abs(net));
+  const up = net >= 0 ? `卖 ${amt}` : `买 ${amt}`;
+  const down = net >= 0 ? `买 ${amt}` : `卖 ${amt}`;
+  const base = `↑1% ${up} · ↓1% ${down}`;
+  const price = data.underlyingPrice;
+  const afterUp = gexAtSpotOnCurve(data.gammaCurve, price * 1.01);
+  const afterDown = gexAtSpotOnCurve(data.gammaCurve, price * 0.99);
+  if (afterUp == null || afterDown == null) return base;
+  return `${base} · 涨后+1% ${fmtUsd(Math.abs(afterUp))}（${fmtSpeedDelta(afterUp - net)}）· 跌后+1% ${fmtUsd(Math.abs(afterDown))}（${fmtSpeedDelta(afterDown - net)}）`;
 }
 
 function gapText(price: number, flip: number): string {

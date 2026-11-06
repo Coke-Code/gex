@@ -1,10 +1,16 @@
 const POS_PEAK = "#60b077";
 const NEG_PEAK = "#be4245";
 const STEPS = 10;
-// 相对该区平均高度的 0 到 10 倍。10 倍及以上用极值色，再往下同色加深。
-const LEVELS = Array.from({ length: STEPS + 1 }, (_, index) => 0.46 + (0.54 * index) / STEPS);
+const MIN_SCALE = 0.26;
+const MAX_SCALE = 1;
+const LEVELS = Array.from(
+  { length: STEPS + 1 },
+  (_, index) => MIN_SCALE + ((MAX_SCALE - MIN_SCALE) * index) / STEPS,
+);
+const BELOW_MEDIAN_STEPS = 5;
+const ABOVE_MEDIAN_STEPS = 5;
 
-/** 正负分开算平均高度。大约每高一倍换一档，共 10 档，档与档之间平滑过渡。 */
+/** 正负分开算中位数。≤ 中位数 5 档，> 中位数 5 档（到 10 倍中位数顶满）。空间、时间柱图共用。 */
 export function barColors(values: number[]): string[] {
   const colors = values.map(() => shade(POS_PEAK, 0));
   for (const positive of [true, false]) {
@@ -13,10 +19,15 @@ export function barColors(values: number[]): string[] {
       .filter((item) => (positive ? item.value > 0 : item.value < 0))
       .map((item) => item.index);
     if (indexes.length === 0) continue;
-    const mean = indexes.reduce((sum, index) => sum + Math.abs(values[index]), 0) / indexes.length;
+    const magnitudes = indexes.map((index) => Math.abs(values[index])).sort((a, b) => a - b);
+    const mid = Math.floor(magnitudes.length / 2);
+    const median =
+      magnitudes.length % 2 === 0
+        ? (magnitudes[mid - 1] + magnitudes[mid]) / 2
+        : magnitudes[mid];
     const peak = positive ? POS_PEAK : NEG_PEAK;
     for (const index of indexes) {
-      const ratio = mean > 0 ? Math.abs(values[index]) / mean : 1;
+      const ratio = median > 0 ? Math.abs(values[index]) / median : 1;
       colors[index] = shade(peak, ratio);
     }
   }
@@ -24,7 +35,15 @@ export function barColors(values: number[]): string[] {
 }
 
 function shade(peak: string, ratio: number): string {
-  const x = Math.min(STEPS, Math.max(0, ratio));
+  const r = Math.max(0, ratio);
+  let x: number;
+  if (r <= 1) {
+    x = r * BELOW_MEDIAN_STEPS;
+  } else {
+    const capped = Math.min(STEPS, r);
+    x = BELOW_MEDIAN_STEPS + ((capped - 1) / (STEPS - 1)) * ABOVE_MEDIAN_STEPS;
+  }
+  x = Math.min(STEPS, x);
   const step = Math.min(STEPS - 1, Math.floor(x));
   return mix(darken(peak, LEVELS[step]), darken(peak, LEVELS[step + 1]), smooth(x - step));
 }

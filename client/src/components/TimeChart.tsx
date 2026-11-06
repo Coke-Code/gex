@@ -1,7 +1,7 @@
 import { ExpirySlice } from "../types";
-import { fmtTenor } from "./format";
+import { fmtTenor, fmtUsd } from "./format";
 import { barColors } from "./barColor";
-import { AXIS, GRID, INK, ZERO } from "./palette";
+import { AXIS, GRID, HOVER_BG, HOVER_BORDER, INK, ZERO } from "./palette";
 import { PlotFrame, usePlot } from "./usePlot.tsx";
 
 export default function TimeChart({
@@ -17,20 +17,24 @@ export default function TimeChart({
 
 function build(expiries: ExpirySlice[]) {
   const rows = expiries.slice(0, 8);
+  const net = rows.map((row) => row.netGex);
   const labels = rows.map((row) => {
     const [, month, day] = row.expiry.split("-");
     return `${month}/${day} · ${fmtTenor(row.days)}`;
   });
+  const barFill = barColors(net);
   return {
     traces: [
       {
         type: "bar",
         x: labels,
-        y: rows.map((row) => row.netGex),
+        y: net,
         marker: {
-          color: barColors(rows.map((row) => row.netGex)),
+          color: barFill,
+          line: { width: 0 },
         },
-        hovertemplate: "%{x}<br>净 Gamma %{y:.3s}<extra></extra>",
+        customdata: net.map((value) => hedgeHover(value)),
+        hovertemplate: "%{x}<br>%{customdata}<extra></extra>",
       },
       {
         type: "scatter",
@@ -53,7 +57,7 @@ function build(expiries: ExpirySlice[]) {
         gridcolor: GRID,
         zerolinecolor: ZERO,
         tickfont: { size: 10, color: AXIS },
-        title: { text: "美元 / 涨 1%", font: { size: 10, color: AXIS } },
+        title: { text: "美元 / ±1% 波动", font: { size: 10, color: AXIS } },
         fixedrange: true,
       },
       yaxis2: {
@@ -70,7 +74,22 @@ function build(expiries: ExpirySlice[]) {
       plot_bgcolor: "transparent",
       showlegend: false,
       bargap: 0.35,
-      uirevision: "time",
+      uirevision: "time-median5",
+      hoverlabel: {
+        bgcolor: HOVER_BG,
+        bordercolor: HOVER_BORDER,
+        font: { color: INK, size: 12 },
+        align: "left",
+      },
     },
   };
+}
+
+function hedgeHover(net: number): string {
+  const body = fmtUsd(Math.abs(net));
+  const flow =
+    net >= 0
+      ? `涨 1% 卖 ${body} · 跌 1% 买 ${body}`
+      : `涨 1% 买 ${body} · 跌 1% 卖 ${body}`;
+  return `净 Gamma ${net >= 0 ? "+" : "−"}${body}<br>${flow}`;
 }

@@ -1,7 +1,7 @@
 import { ChartMarker, MarkerKind, StrikeGex } from "../types";
-import { fmtBtc, fmtUsd } from "./format";
+import { fmtBtc, fmtPx, fmtUsd } from "./format";
 import { barColors } from "./barColor";
-import { AXIS, BAND, GRID, INK, LABEL_BG, NOTE, ZERO } from "./palette";
+import { AXIS, GRID, HOVER_BG, HOVER_BORDER, INK, LABEL_BG, NOTE, ZERO } from "./palette";
 import { PlotFrame, usePlot } from "./usePlot.tsx";
 
 interface SpaceChartProps {
@@ -14,11 +14,6 @@ interface SpaceChartProps {
   changeLabel: string | null;
   revision: string;
   onPick: (strike: number) => void;
-}
-
-export default function SpaceChart(props: SpaceChartProps) {
-  const { ref, reset } = usePlot(() => build(props), `${props.revision}:scale`, props.onPick);
-  return <PlotFrame plotRef={ref} onReset={reset} />;
 }
 
 function hover(row: StrikeGex, changeLabel: string | null): string {
@@ -45,15 +40,180 @@ function markerNote(marker: ChartMarker): string {
   return marker.confluence ? `${hint}<br>★ 和另一类标点叠在同一带` : hint;
 }
 
+const ABS_BOTTOM = 0.24;
+const NET_TOP = 0.32;
+const XAXIS_POS = 0.28;
+
+const PAIR_BAND = {
+  P: "rgba(27, 143, 78, 0.13)",
+  N: "rgba(220, 72, 48, 0.14)",
+  A: "rgba(47, 111, 224, 0.13)",
+} as const;
+
+function pushPairBand(
+  shapes: object[],
+  markers: ChartMarker[],
+  idA: string,
+  idB: string,
+  fillcolor: string,
+) {
+  const a = markers.find((m) => m.id === idA);
+  const b = markers.find((m) => m.id === idB);
+  if (!a || !b) return;
+  const x0 = Math.min(a.price, b.price);
+  const x1 = Math.max(a.price, b.price);
+  if (x1 <= x0) return;
+  shapes.push({
+    type: "rect",
+    x0,
+    x1,
+    y0: 0,
+    y1: 1,
+    xref: "x",
+    yref: "paper",
+    layer: "below",
+    fillcolor,
+    line: { width: 0 },
+  });
+}
+
+function strikeTick(strike: number): string {
+  return strike % 1000 === 0 ? `${strike / 1000}k` : strike.toLocaleString("en-US");
+}
+
+const MAX_X_TICKS = 14;
+const MIN_TICK_SPAN = 500;
+
+function nearestStrike(strikes: number[], target: number): number {
+  return strikes.reduce((best, strike) =>
+    Math.abs(strike - target) < Math.abs(best - target) ? strike : best,
+  );
+}
+
+function tickGapOk(chosen: number[], strike: number): boolean {
+  return chosen.every((value) => Math.abs(value - strike) >= MIN_TICK_SPAN);
+}
+
+/** 悬崖竖带：约两条线宽，用现货比例换算成价位厚度。 */
+function gcBandHalfWidth(spot: number): number {
+  return Math.max(spot * 0.00012, 28);
+}
+
+/** 柱子在每个行权价上；横轴刻度至少相隔 MIN_TICK_SPAN，且不超过 MAX_X_TICKS。 */
+function thinXAxisTicks(strikes: number[], pinPrices: number[]): number[] {
+  if (strikes.length === 0) return [];
+
+  const chosen: number[] = [];
+  const add = (strike: number) => {
+    if (tickGapOk(chosen, strike)) chosen.push(strike);
+  };
+
+  const pinned: number[] = [];
+  const seen = new Set<number>();
+  for (const price of pinPrices) {
+    if (!(price > 0)) continue;
+    const strike = nearestStrike(strikes, price);
+    if (seen.has(strike)) continue;
+    seen.add(strike);
+    pinned.push(strike);
+  }
+  if (!seen.has(strikes[0])) pinned.push(strikes[0]);
+  if (!seen.has(strikes[strikes.length - 1])) pinned.push(strikes[strikes.length - 1]);
+
+  for (const strike of pinned) add(strike);
+
+  const every = Math.max(1, Math.ceil(strikes.length / MAX_X_TICKS));
+  for (let i = 0; i < strikes.length && chosen.length < MAX_X_TICKS; i += every) {
+    add(strikes[i]);
+  }
+  for (const strike of strikes) {
+    if (chosen.length >= MAX_X_TICKS) break;
+    add(strike);
+  }
+
+  return chosen.sort((a, b) => a - b);
+}
+
 const MARK: Record<MarkerKind, { color: string; bg: string; ink: string; hint: string }> = {
   P: { color: "#1B8F4E", bg: "#1B8F4E", ink: "#ffffff", hint: "正峰。做市商在这里买跌卖涨，压波动。" },
   N: { color: "#D64550", bg: "#D64550", ink: "#ffffff", hint: "负峰。波动会被放大。拿来当止损，不要当支撑。" },
   A: { color: "#2F6FE0", bg: "#2F6FE0", ink: "#ffffff", hint: "绝对峰。总 Gamma 最大，临近到期容易被吸住。" },
-  F: { color: "#b14ad4", bg: "#b14ad4", ink: "#b14ad4", hint: "翻转。净 Gamma 在这里过零。上面波动小，下面波动大。" },
+  F: { color: "#b14ad4", bg: "#b14ad4", ink: "#ffffff", hint: "翻转。净 Gamma 在这里过零。上面波动小，下面波动大。" },
   S: { color: "#C99600", bg: "#C99600", ink: "#ffffff", hint: "稳定点。预测里正 Gamma 最大的位置，回归最强。" },
   V: { color: "#E67A22", bg: "#E67A22", ink: "#ffffff", hint: "波动点。预测里负 Gamma 最大的位置，容易加速。" },
   GC: { color: "#1A1A1A", bg: "#1A1A1A", ink: "#ffffff", hint: "悬崖。预测斜率最陡，小波动会引出大对冲。" },
 };
+
+const LEGEND: { id: string; name: string; bg: string; ink: string; border?: string }[] = [
+  { id: "P1", name: "正峰", bg: MARK.P.bg, ink: MARK.P.ink },
+  { id: "P2", name: "正峰", bg: MARK.P.bg, ink: MARK.P.ink },
+  { id: "N1", name: "负峰", bg: MARK.N.bg, ink: MARK.N.ink },
+  { id: "N2", name: "负峰", bg: MARK.N.bg, ink: MARK.N.ink },
+  { id: "A1", name: "磁铁", bg: MARK.A.bg, ink: MARK.A.ink },
+  { id: "A2", name: "磁铁", bg: MARK.A.bg, ink: MARK.A.ink },
+  { id: "F", name: "翻转", bg: MARK.F.bg, ink: MARK.F.ink },
+  { id: "S", name: "稳定", bg: "#ffffff", ink: "#1A1A1A", border: "#1A1A1A" },
+  { id: "V", name: "放大", bg: MARK.V.bg, ink: MARK.V.ink },
+  { id: "GC", name: "悬崖", bg: MARK.GC.bg, ink: MARK.GC.ink },
+];
+
+function legendPrice(markers: ChartMarker[], markerId: string, spot: number): string | null {
+  const hit = markers.find(
+    (m) => m.id === markerId && m.price > spot * 0.82 && m.price < spot * 1.18,
+  );
+  if (!hit) return null;
+  return `${fmtPx(hit.price)}${hit.confluence ? "★" : ""}`;
+}
+
+function MarkerLegend({ markers, price }: { markers: ChartMarker[]; price: number }) {
+  return (
+    <div className="marker-legend" aria-label="关键点标记">
+      {LEGEND.map((item) => {
+        const values = legendPrice(markers, item.id, price);
+        return (
+          <span key={item.id} className="marker-legend-item">
+            <span
+              className="marker-legend-chip"
+              style={{
+                background: item.bg,
+                color: item.ink,
+                ...(item.border ? { boxShadow: `inset 0 0 0 1px ${item.border}` } : {}),
+              }}
+            >
+              {item.id}
+            </span>
+            <span className="marker-legend-copy">
+              <span className="marker-legend-name">{item.name}</span>
+              <span className={`marker-legend-val${values ? "" : " is-empty"}`}>{values ?? "—"}</span>
+            </span>
+          </span>
+        );
+      })}
+      <span className="marker-legend-item">
+        <span className="marker-legend-chip marker-legend-chip-star" aria-hidden>
+          ★
+        </span>
+        <span className="marker-legend-copy">
+          <span className="marker-legend-name">叠合</span>
+          <span className="marker-legend-val is-meta">同类标点同价带</span>
+        </span>
+      </span>
+    </div>
+  );
+}
+
+export default function SpaceChart(props: SpaceChartProps) {
+  const { ref, reset } = usePlot(() => build(props), `${props.revision}:scale`, {
+    onPick: props.onPick,
+    xHoverLabel: { y: XAXIS_POS, format: fmtPx },
+  });
+  return (
+    <div className="space-chart">
+      <MarkerLegend markers={props.markers} price={props.price} />
+      <PlotFrame plotRef={ref} onReset={reset} />
+    </div>
+  );
+}
 
 function build(props: SpaceChartProps) {
   const { strikes, price, support, resistance, oneDay, markers, changeLabel } = props;
@@ -124,18 +284,11 @@ function build(props: SpaceChartProps) {
     });
   };
 
+  pushPairBand(shapes, shown, "P1", "P2", PAIR_BAND.P);
+  pushPairBand(shapes, shown, "N1", "N2", PAIR_BAND.N);
+  pushPairBand(shapes, shown, "A1", "A2", PAIR_BAND.A);
+
   if (oneDay != null && oneDay > 0) {
-    shapes.push({
-      type: "rect",
-      x0: price - oneDay,
-      x1: price + oneDay,
-      y0: 0,
-      y1: 1,
-      yref: "y domain",
-      layer: "below",
-      fillcolor: BAND,
-      line: { width: 0 },
-    });
     annotations.push(
       { x: price - oneDay, y: 0.08, yref: "y domain", text: "−1日", showarrow: false, font: { size: 10, color: NOTE } },
       { x: price + oneDay, y: 0.08, yref: "y domain", text: "+1日", showarrow: false, font: { size: 10, color: NOTE } },
@@ -182,12 +335,12 @@ function build(props: SpaceChartProps) {
       x,
       y: rows.map((row) => row.absGex),
       yaxis: "y2",
-      fill: "tozeroy",
-      fillcolor: "rgba(140, 92, 196, 0.28)",
       line: { color: "#8c5cc4", width: 1.4 },
       hovertemplate: "%{x:,.0f}<br>绝对 %{y:.3s}<extra></extra>",
     },
   ];
+  const xTicks = thinXAxisTicks(x, marks);
+
   for (const marker of shown) {
     const style = MARK[marker.kind];
     const row = byStrike.get(marker.price);
@@ -201,16 +354,31 @@ function build(props: SpaceChartProps) {
       badge(row.strike, row.absGex, marker.id, style.ink, style.bg, 12, "y2", marker.confluence);
       continue;
     }
-    const dash = marker.kind === "V" ? "dash" : marker.kind === "GC" ? "dot" : "solid";
-    shapes.push({
-      type: "line",
-      x0: marker.price,
-      x1: marker.price,
-      y0: 0,
-      y1: 1,
-      yref: "y domain",
-      line: { color: style.color, width: 1.2, dash },
-    });
+    if (marker.kind === "GC") {
+      const half = gcBandHalfWidth(price);
+      shapes.push({
+        type: "rect",
+        x0: marker.price - half,
+        x1: marker.price + half,
+        y0: 0,
+        y1: 1,
+        xref: "x",
+        yref: "paper",
+        layer: "below",
+        fillcolor: "#1A1A1A",
+        line: { width: 0 },
+      });
+      badge(marker.price, XAXIS_POS - 0.01, marker.id, style.ink, style.bg, 0, "paper", marker.confluence);
+      traces.push({
+        type: "scatter",
+        mode: "markers",
+        x: [marker.price],
+        y: [0],
+        marker: { size: 7, color: style.color },
+        hoverinfo: "skip",
+      });
+      continue;
+    }
     if (marker.kind === "F") {
       traces.push({
         type: "scatter",
@@ -219,9 +387,9 @@ function build(props: SpaceChartProps) {
         y: [0],
         text: [marker.id],
         textposition: "top center",
-        textfont: { size: 11, color: style.color },
-        marker: { symbol: "diamond", size: 9, color: style.color },
-        hovertemplate: `${markerNote(marker)}<extra></extra>`,
+        textfont: { size: 13, color: style.color },
+        marker: { symbol: "diamond", size: 16, color: style.color },
+        hoverinfo: "skip",
       });
       if (marker.confluence) {
         annotations.push({
@@ -229,7 +397,38 @@ function build(props: SpaceChartProps) {
           y: 0,
           text: "★",
           showarrow: false,
-          yshift: 16,
+          yshift: 20,
+          xshift: 18,
+          font: { size: 13, color: STAR },
+          bgcolor: "transparent",
+          borderwidth: 0,
+        });
+      }
+      continue;
+    }
+    if (marker.kind === "S" || marker.kind === "V") {
+      const axisTag =
+        marker.kind === "S"
+          ? { fill: "#ffffff", ink: "#1A1A1A", line: { width: 1, color: "#1A1A1A" } }
+          : { fill: style.bg, ink: style.ink, line: { width: 0, color: style.bg } };
+      traces.push({
+        type: "scatter",
+        mode: "markers+text",
+        x: [marker.price],
+        y: [0],
+        text: [marker.id],
+        textposition: "middle center",
+        textfont: { size: 11, color: axisTag.ink },
+        marker: { symbol: "circle", size: 20, color: axisTag.fill, line: axisTag.line },
+        hoverinfo: "skip",
+      });
+      if (marker.confluence) {
+        annotations.push({
+          x: marker.price,
+          y: 0,
+          text: "★",
+          showarrow: false,
+          yshift: 14,
           xshift: 16,
           font: { size: 13, color: STAR },
           bgcolor: "transparent",
@@ -238,39 +437,44 @@ function build(props: SpaceChartProps) {
       }
       continue;
     }
-    badge(marker.price, 0.27, marker.id, style.ink, style.bg, 0, "paper", marker.confluence);
-    traces.push({
-      type: "scatter",
-      mode: "markers",
-      x: [marker.price],
-      y: [0],
-      marker: { size: 7, color: style.color },
-      hovertemplate: `${markerNote(marker)}<extra></extra>`,
-    });
   }
 
   return {
     traces,
     layout: {
       xaxis: {
-        anchor: "y2",
+        type: "linear",
+        anchor: "free",
+        position: XAXIS_POS,
         range: [lo, hi],
-        gridcolor: GRID,
+        tickmode: "array",
+        tickvals: xTicks,
+        ticktext: xTicks.map(strikeTick),
+        tickangle: xTicks.length > 11 ? -45 : 0,
+        tickfont: { size: 9, color: AXIS },
+        showgrid: false,
         zeroline: false,
-        tickfont: { size: 10, color: AXIS },
+        showspikes: true,
+        spikemode: "across",
+        spikesnap: "cursor",
+        spikecolor: NOTE,
+        spikedash: "dot",
+        spikethickness: 1,
         fixedrange: false,
       },
       yaxis: {
-        domain: [0.32, 1],
+        anchor: "x",
+        domain: [NET_TOP, 1],
         tickformat: ".2s",
         gridcolor: GRID,
         zerolinecolor: ZERO,
         tickfont: { size: 10, color: AXIS },
-        title: { text: "美元 / 涨 1%", font: { size: 10, color: AXIS } },
+        title: { text: "美元 / ±1% 波动", font: { size: 10, color: AXIS } },
         fixedrange: true,
       },
       yaxis2: {
-        domain: [0, 0.22],
+        anchor: "x",
+        domain: [0, ABS_BOTTOM],
         tickformat: ".2s",
         gridcolor: "transparent",
         zeroline: false,
@@ -280,13 +484,21 @@ function build(props: SpaceChartProps) {
       },
       shapes,
       annotations,
-      margin: { l: 56, r: 12, t: 8, b: 28 },
+      margin: { l: 56, r: 12, t: 8, b: 36 },
       paper_bgcolor: "transparent",
       plot_bgcolor: "transparent",
       showlegend: false,
       bargap: 0.15,
-      uirevision: "space4",
-      hovermode: "closest",
+      uirevision: "space-median5",
+      hovermode: "x unified",
+      hoverdistance: 24,
+      spikedistance: -1,
+      hoverlabel: {
+        bgcolor: HOVER_BG,
+        bordercolor: HOVER_BORDER,
+        font: { color: INK, size: 12 },
+        align: "left",
+      },
     },
   };
 }

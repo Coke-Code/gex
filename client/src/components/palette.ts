@@ -10,3 +10,5 @@ export const FLIP = "#c4843a";
 export const BAND = "rgba(26, 29, 38, 0.05)";
 export const NOTE = "#8d7360";
 export const LABEL_BG = "rgba(255, 255, 255, 0.9)";
+export const HOVER_BG = "#ffffff";
+export const HOVER_BORDER = "#e2e5ea";

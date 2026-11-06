@@ -32,18 +32,25 @@ function capture(layout: FigureLayout): HomeView {
   };
 }
 
+type PlotOptions = {
+  onPick?: (x: number) => void;
+  /** 悬停时在 x 轴附近贴一行权价/价格标签 */
+  xHoverLabel?: { y: number; format: (x: number) => string };
+};
+
 export function usePlot(
   getFigure: () => { traces: unknown[]; layout: FigureLayout },
   revision: string,
-  onPick?: (x: number) => void,
+  options?: PlotOptions,
 ) {
   const ref = useRef<HTMLDivElement>(null);
   const getRef = useRef(getFigure);
-  const onPickRef = useRef(onPick);
+  const optionsRef = useRef(options);
+  const baseAnnotations = useRef<object[]>([]);
   const home = useRef<HomeView>({ key: "plot" });
   const generation = useRef(0);
   getRef.current = getFigure;
-  onPickRef.current = onPick;
+  optionsRef.current = options;
 
   const applyView = (layout: FigureLayout): FigureLayout => ({
     ...layout,
@@ -79,6 +86,7 @@ export function usePlot(
     const plot = el as PlotlyHTMLElement;
     const figure = getRef.current();
     home.current = capture(figure.layout);
+    baseAnnotations.current = (figure.layout.annotations as object[] | undefined) ?? [];
     const layout = applyView(figure.layout);
     let alive = true;
     window.Plotly
@@ -96,14 +104,49 @@ export function usePlot(
     const onPlotClick = (event: { points?: Array<{ x?: unknown; curveNumber?: number }> }) => {
       const point = event.points?.[0];
       if (!point || point.curveNumber !== 0) return;
-      if (typeof point.x === "number") onPickRef.current?.(point.x);
+      if (typeof point.x === "number") optionsRef.current?.onPick?.(point.x);
     };
+    const setXHoverLabel = (x: number | null) => {
+      const label = optionsRef.current?.xHoverLabel;
+      if (!label || !window.Plotly) return;
+      if (x == null || !Number.isFinite(x)) {
+        window.Plotly.relayout(plot, { annotations: [...baseAnnotations.current] });
+        return;
+      }
+      window.Plotly.relayout(plot, {
+        annotations: [
+          ...baseAnnotations.current,
+          {
+            x,
+            y: label.y,
+            xref: "x",
+            yref: "paper",
+            text: label.format(x),
+            showarrow: false,
+            font: { size: 11, color: "#3f342c" },
+            bgcolor: "#ffffff",
+            bordercolor: "#e2e5ea",
+            borderwidth: 1,
+            borderpad: 3,
+          },
+        ],
+      });
+    };
+    const onPlotHover = (event: { points?: Array<{ x?: unknown }> }) => {
+      const x = event.points?.[0]?.x;
+      if (typeof x === "number") setXHoverLabel(x);
+    };
+    const onPlotUnhover = () => setXHoverLabel(null);
     plot.addEventListener("dblclick", onDoubleClick);
     plot.on?.("plotly_click", onPlotClick);
+    plot.on?.("plotly_hover", onPlotHover);
+    plot.on?.("plotly_unhover", onPlotUnhover);
     return () => {
       alive = false;
       plot.removeEventListener("dblclick", onDoubleClick);
       plot.removeListener?.("plotly_click", onPlotClick);
+      plot.removeListener?.("plotly_hover", onPlotHover);
+      plot.removeListener?.("plotly_unhover", onPlotUnhover);
     };
     // reset reads the saved ranges from refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps

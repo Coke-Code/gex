@@ -1,5 +1,5 @@
 import { GammaCurvePoint } from "../types";
-import { AXIS, FLIP, GRID, INK, LABEL_BG, ZERO } from "./palette";
+import { AXIS, FLIP, GRID, HOVER_BG, HOVER_BORDER, INK, LABEL_BG, ZERO } from "./palette";
 import { PlotFrame, usePlot } from "./usePlot.tsx";
 
 export default function SpeedChart({
@@ -28,8 +28,10 @@ function build(curve: GammaCurvePoint[], price: number, flip: number | null) {
         mode: "lines",
         x: rows.map((point) => point.spot),
         y: rows.map((point) => point.totalNetGex),
+        customdata: rows.map((point) => [-point.totalNetGex]),
         line: { color: INK, width: 2 },
-        hovertemplate: "%{x:,.0f}<br>净 %{y:.3s}<extra></extra>",
+        hovertemplate:
+          "现货若到 %{x:,.0f}<br>涨 1% 对冲 %{y:.3s}<br>跌 1% 对冲 %{customdata[0]:.3s}<extra></extra>",
       },
     ],
     layout: {
@@ -86,6 +88,12 @@ function build(curve: GammaCurvePoint[], price: number, flip: number | null) {
       plot_bgcolor: "transparent",
       showlegend: false,
       uirevision: "speed",
+      hoverlabel: {
+        bgcolor: HOVER_BG,
+        bordercolor: HOVER_BORDER,
+        font: { color: INK, size: 12 },
+        align: "left",
+      },
     },
   };
 }
