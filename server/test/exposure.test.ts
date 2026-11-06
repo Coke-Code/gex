@@ -197,6 +197,7 @@ test("levels, tenor and 25-delta skew come off the same chain", () => {
   assert.equal(analysis.levels.support?.strike, 90);
   assert.equal(analysis.levels.resistance?.strike, 110);
   assert.equal(analysis.expiries.length, 2);
+  assert.ok(Array.isArray(analysis.termStructure));
   assert.ok(analysis.expiries[0].days < analysis.expiries[1].days);
   assert.ok(analysis.expiries[0].atmIv && analysis.expiries[0].atmIv > 0.5);
   assert.ok(analysis.speed.hedgeUsdPer1Pct !== 0);

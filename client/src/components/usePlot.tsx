@@ -153,12 +153,20 @@ export function usePlot(
   }, [revision]);
 
   useEffect(() => {
-    const onResize = () => {
-      if (ref.current && window.Plotly) window.Plotly.Plots.resize(ref.current);
+    const el = ref.current;
+    if (!el) return;
+    const resize = () => {
+      if (window.Plotly) window.Plotly.Plots.resize(el);
     };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+    const target = el.parentElement ?? el;
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
+    observer?.observe(target);
+    window.addEventListener("resize", resize);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", resize);
+    };
+  }, [revision]);
 
   return { ref, reset };
 }

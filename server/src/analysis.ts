@@ -10,6 +10,7 @@ import {
   gexAtSpotOnCurve,
 } from "./greeks/exposure";
 import { chartMarkers } from "./markers";
+import { buildTermStructure, maxPain } from "./termStructure";
 import {
   DataQuality,
   ExchangeSource,
@@ -351,6 +352,47 @@ export function analyzeChain(input: {
   };
 
   const expiries = buildExpiries(used, nowMs);
+  const expectedVenues: ExchangeSource[] =
+    venue === "all" ? [...VENUES] : [venue as ExchangeSource];
+  const termOptions = used.map((option) => ({
+    strike: option.strike,
+    optionType: option.optionType,
+    openInterest: option.openInterest,
+    gex: option.gex,
+    timeYears: option.timeYears,
+    impliedVolatility: option.impliedVolatility,
+    forwardPrice: option.forwardPrice,
+    expiryTimestamp: option.expiryTimestamp,
+    exchange: option.exchange,
+  }));
+  const termStructure = buildTermStructure({
+    options: termOptions,
+    indexPrice,
+    nowMs,
+    expectedVenues,
+  });
+  if (termStructure.length > 0 && used.length >= 4) {
+    termStructure.unshift({
+      expiry: "TOTAL",
+      days: 0,
+      contractsUsed: used.length,
+      flipPoint: zero?.flipPoint ?? null,
+      maxPain: maxPain(
+        termOptions.map((row) => ({
+          strike: row.strike,
+          optionType: row.optionType,
+          openInterest: row.openInterest,
+        })),
+      ),
+      markers: chartMarkers(
+        strikes,
+        gammaCurve,
+        zero?.flipPoint ?? null,
+        indexPrice,
+      ).filter((marker) => marker.kind === "P" || marker.kind === "N" || marker.kind === "F"),
+      qualityNote: null,
+    });
+  }
 
   const exchangeBreakdown: GexAnalysis["exchangeBreakdown"] = {};
   for (const name of VENUES) {
@@ -385,6 +427,7 @@ export function analyzeChain(input: {
         : null,
     },
     expiries,
+    termStructure,
     move: dailyMove(expiries, indexPrice),
     speed: {
       hedgeUsdPer1Pct: totalNetGex,

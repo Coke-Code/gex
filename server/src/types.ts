@@ -69,6 +69,18 @@ export interface ExpirySlice {
   atmIv: number | null;
 }
 
+/** 单到期日的 Term Structure 行：Flip / Max Pain / P·N·A 标记 */
+export interface TermStructureSlice {
+  expiry: string;
+  days: number;
+  contractsUsed: number;
+  flipPoint: number | null;
+  maxPain: number | null;
+  markers: ChartMarker[];
+  /** 例如缺某所持仓；OI 延迟见全局 quality */
+  qualityNote: string | null;
+}
+
 export interface PriceLevel {
   strike: number;
   netGex: number;
@@ -147,6 +159,8 @@ export interface GexAnalysis {
   };
   /** 期限：按到期日汇总，从近到远 */
   expiries: ExpirySlice[];
+  /** 各到期并排的关键价位（GammaFlip Term Structure） */
+  termStructure: TermStructureSlice[];
   /** 速度：上涨 1% 的对冲额，以及对冲额本身会再变多少 */
   speed: {
     hedgeUsdPer1Pct: number;

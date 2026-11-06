@@ -29,6 +29,16 @@ export interface ExpirySlice {
   atmIv: number | null;
 }
 
+export interface TermStructureSlice {
+  expiry: string;
+  days: number;
+  contractsUsed: number;
+  flipPoint: number | null;
+  maxPain: number | null;
+  markers: ChartMarker[];
+  qualityNote: string | null;
+}
+
 export interface PriceLevel {
   strike: number;
   netGex: number;
@@ -81,6 +91,7 @@ export interface GexAnalysis {
     resistance: PriceLevel | null;
   };
   expiries: ExpirySlice[];
+  termStructure: TermStructureSlice[];
   move: {
     expiry: string;
     days: number;

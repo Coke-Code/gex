@@ -1089,44 +1089,125 @@
 }
 
 .board-foot {
+  flex-shrink: 0;
   padding-bottom: 8px;
   color: var(--text-muted);
+}
+
+.board-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 12px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.board-tab {
+  padding: 9px 16px;
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.board-tab:hover:not(.is-active) {
+  color: var(--text-primary);
+}
+
+.board-tab.is-active {
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom-color: var(--purple);
+}
+
+.board-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.board-pane {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.board-pane.is-active {
+  display: flex;
 }
 
 .board-grid {
   flex: 1;
   min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.board-grid--gex {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.9fr);
-  grid-template-rows: minmax(0, 1fr) minmax(0, 0.88fr);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: 8px;
-  padding: 8px;
 }
 
-.space-panel {
-  grid-row: 1 / span 2;
+.board-grid--term {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
 }
 
-.space-chart {
+.board-grid--gex > .panel,
+.board-grid--term > .panel {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+}
+
+.space-chart,
+.term-structure-chart {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .marker-legend {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   align-items: flex-start;
+  align-content: flex-start;
   gap: 8px 14px;
+  width: 100%;
+  box-sizing: border-box;
   padding: 4px 12px 8px;
+  flex-shrink: 0;
 }
 
 .marker-legend-item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 7px;
+  display: inline-flex;
   align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .marker-legend-copy {
@@ -1148,7 +1229,6 @@
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--text);
-  white-space: nowrap;
 }
 
 .marker-legend-val.is-empty {
@@ -1176,7 +1256,7 @@
   font-size: 10px;
   font-weight: 650;
   line-height: 1.25;
-  grid-row: 1 / span 1;
+  flex-shrink: 0;
 }
 
 .marker-legend-chip-star {
@@ -1192,9 +1272,10 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .panel .plot-wrap,
@@ -1277,16 +1358,25 @@
 }
 
 .plot-wrap,
-.plot,
 .panel-empty {
   flex: 1;
   min-height: 0;
+  min-width: 0;
 }
 
 .plot-wrap {
   position: relative;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.plot-wrap > .plot {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .plot-reset {
@@ -1303,9 +1393,12 @@
   cursor: pointer;
 }
 
-.board .js-plotly-plot,
-.board .plot {
-  max-height: none !important;
+.board .plot-wrap .plot,
+.board .plot-wrap .js-plotly-plot {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
 }
 
 .panel-empty {
@@ -1331,12 +1424,15 @@
     margin-left: 0;
   }
 
-  .board-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: 480px 280px 240px;
+  .board-grid--gex {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(280px, 1fr) minmax(240px, 1fr);
+    overflow-y: auto;
   }
 
-  .space-panel {
-    grid-row: auto;
+  .board-grid--gex > .panel,
+  .board-grid--term > .panel {
+    height: auto;
+    min-height: 280px;
   }
 }

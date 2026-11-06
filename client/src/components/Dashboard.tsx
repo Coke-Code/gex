@@ -12,7 +12,7 @@ import { fmtAge, fmtBtc, fmtPx, fmtTenor, fmtUsd, gexAtSpotOnCurve } from "./for
 import { HelpTip } from "./HelpTip";
 import SpaceChart from "./SpaceChart";
 import SpeedChart from "./SpeedChart";
-import TimeChart from "./TimeChart";
+import TermStructureChart from "./TermStructureChart";
 
 const HELP = {
   flip: "净 Gamma 从正变负（或反过来）的价位。多在翻转上方波动偏小、下方偏大。数字距现货越远，短期越难「贴」着走。",
@@ -26,18 +26,21 @@ const HELP = {
   venueFlip: "各交易所用自己的持仓单独算的翻转价，和顶栏聚合翻转可能不一致。",
   space:
     "上：各行权价的净 Gamma 对冲（±1% 波动），柱色深浅表示强度；下：绝对 Gamma 曲线。虚线=现价；「±1日」文字=一日预期波动距离（无底色）。绿/橘红/蓝竖带分别是 P1–P2、N1–N2、A1–A2 双峰区间。图例为算法关键点及当前价位；点柱看到期拆分。",
-  time: "最近 8 个到期日：柱=该日净 Gamma 对冲，色柱规则与空间图相同；黑线=平值 IV。悬停可看涨跌各需买/卖多少。",
-  speed:
-    "不是成交速度。横轴=若现货在这里；纵轴=该价位下的净 Gamma 对冲（±1% 美元量）。曲线越陡，对冲需求随价位变化越快。虚线=现价，紫线=翻转。副标题「至 ±1% 档」=移到 ±1% 情景后的对冲量，括号 Δ 为与现在的差。",
+  term:
+    "Term Structure：横轴到期（含 TOTAL 全链），纵轴价位。绿带=正峰 P1–P2，红带=负峰 N1–N2，紫线=Flip。虚线=现货；悬停看张数与 OI 延迟说明。",
+  forecast:
+    "Net GEX Forecast（Gamma Profile）：假想现货在各价位时的净 Gamma 对冲。绿区 Sticky（正 GEX），红区 Jumpy（负 GEX）。曲线为展示样条，底层仍按 0.5% 步长计算。虚线=现价。",
 } as const;
 
 const REFRESH_SECONDS = 60;
 const PILLS: VenueFilter[] = ["all", "deribit", "binance", "okx"];
+type BoardTab = "gex" | "term";
 
 export default function Dashboard() {
   const { data, loading, error, refresh, venue, setVenue } = useGexData();
   const [countdown, setCountdown] = useState(REFRESH_SECONDS);
   const [picked, setPicked] = useState<number | null>(null);
+  const [tab, setTab] = useState<BoardTab>("gex");
 
   useEffect(() => {
     setCountdown(REFRESH_SECONDS);
@@ -52,6 +55,11 @@ export default function Dashboard() {
     }, 1000);
     return () => clearInterval(timer);
   }, [refresh, data?.timestamp]);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+    return () => cancelAnimationFrame(id);
+  }, [tab]);
 
   const price = data?.underlyingPrice ?? 0;
   const flip = data?.flipPoint ?? null;
@@ -164,57 +172,103 @@ export default function Dashboard() {
         </p>
       )}
 
-      <main className="board-grid">
-        <section className="panel space-panel">
-          <PanelTitle
-            k="空间"
-            help={HELP.space}
-            s={
-              pickedRow
-                ? "点选的这一档"
-                : oneDay
-                  ? `一日 ±${fmtPx(oneDay)} · 点一根柱看到期`
-                  : "点一根柱看到期 · 标记含义见下图例"
-            }
-          />
-          {pickedRow && <StrikeSplit row={pickedRow} changeLabel={changeLabel} />}
-          {data && price > 0 && data.strikes.length > 0 ? (
-            <SpaceChart
-              strikes={data.strikes}
-              price={price}
-              support={support}
-              resistance={resistance}
-              oneDay={oneDay}
-              markers={data.markers ?? []}
-              changeLabel={changeLabel}
-              revision={revision}
-              onPick={setPicked}
-            />
-          ) : (
-            <Empty loading={loading} />
-          )}
-        </section>
-        <section className="panel">
-          <PanelTitle k="时间" help={HELP.time} s="Gamma 和隐波落在哪一天" />
-          {data && data.expiries.length > 0 ? (
-            <TimeChart expiries={data.expiries} revision={revision} />
-          ) : (
-            <Empty loading={loading} />
-          )}
-        </section>
-        <section className="panel">
-          <PanelTitle k="速度" help={HELP.speed} s={speedNote(data)} />
-          {data && price > 0 && data.gammaCurve.length > 0 ? (
-            <SpeedChart
-              curve={data.gammaCurve}
-              price={price}
-              flip={flip}
-              revision={revision}
-            />
-          ) : (
-            <Empty loading={loading} />
-          )}
-        </section>
+      <nav className="board-tabs" role="tablist" aria-label="图表视图">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "gex"}
+          className={`board-tab${tab === "gex" ? " is-active" : ""}`}
+          onClick={() => setTab("gex")}
+        >
+          Gex Level
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "term"}
+          className={`board-tab${tab === "term" ? " is-active" : ""}`}
+          onClick={() => setTab("term")}
+        >
+          Term Structure
+        </button>
+      </nav>
+
+      <main className="board-main">
+        <div
+          className={`board-pane${tab === "gex" ? " is-active" : ""}`}
+          role="tabpanel"
+          hidden={tab !== "gex"}
+        >
+          <div className="board-grid board-grid--gex">
+            <section className="panel space-panel">
+              <PanelTitle
+                k="空间"
+                help={HELP.space}
+                s={
+                  pickedRow
+                    ? "点选的这一档"
+                    : oneDay
+                      ? `一日 ±${fmtPx(oneDay)} · 点一根柱看到期`
+                      : "点一根柱看到期 · 标记含义见下图例"
+                }
+              />
+              {pickedRow && <StrikeSplit row={pickedRow} changeLabel={changeLabel} />}
+              {data && price > 0 && data.strikes.length > 0 ? (
+                <SpaceChart
+                  strikes={data.strikes}
+                  price={price}
+                  support={support}
+                  resistance={resistance}
+                  oneDay={oneDay}
+                  markers={data.markers ?? []}
+                  changeLabel={changeLabel}
+                  revision={revision}
+                  onPick={setPicked}
+                />
+              ) : (
+                <Empty loading={loading} />
+              )}
+            </section>
+            <section className="panel forecast-panel">
+              <PanelTitle k="预测" help={HELP.forecast} s={speedNote(data)} />
+              {data && price > 0 && data.gammaCurve.length > 0 ? (
+                <SpeedChart
+                  curve={data.gammaCurve}
+                  price={price}
+                  flip={flip}
+                  markers={data.markers ?? []}
+                  revision={revision}
+                />
+              ) : (
+                <Empty loading={loading} />
+              )}
+            </section>
+          </div>
+        </div>
+        <div
+          className={`board-pane${tab === "term" ? " is-active" : ""}`}
+          role="tabpanel"
+          hidden={tab !== "term"}
+        >
+          <div className="board-grid board-grid--term">
+            <section className="panel term-panel">
+              <PanelTitle
+                k="期限"
+                help={HELP.term}
+                s={termStructureNote(data?.termStructure)}
+              />
+              {data && data.termStructure.length > 0 && price > 0 ? (
+                <TermStructureChart
+                  slices={data.termStructure}
+                  price={price}
+                  revision={revision}
+                />
+              ) : (
+                <Empty loading={loading} />
+              )}
+            </section>
+          </div>
+        </div>
       </main>
 
       <footer className="board-foot">
@@ -296,6 +350,14 @@ function hedgeBothWays(net: number): string {
   const amt = fmtUsd(Math.abs(net));
   if (net >= 0) return `涨 1% 卖 ${amt} · 跌 1% 买 ${amt} · 压制波动`;
   return `涨 1% 买 ${amt} · 跌 1% 卖 ${amt} · 放大波动`;
+}
+
+function termStructureNote(slices: GexAnalysis["termStructure"] | undefined): string {
+  if (!slices || slices.length === 0) return "近端到期 · 绿/红带与 Flip（展示用样条）";
+  const rows = slices.length;
+  const contracts = slices.reduce((sum, row) => sum + row.contractsUsed, 0);
+  const partial = slices.filter((row) => row.qualityNote?.includes("缺")).length;
+  return `${rows} 个到期 · ${contracts} 张 · ★ 同价带${partial > 0 ? ` · ${partial} 行缺所` : ""} · OI 延迟`;
 }
 
 function fmtSpeedDelta(d: number): string {
