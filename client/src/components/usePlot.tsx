@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, type RefObject } from "react";
 type AxisLayout = { range?: number[]; [key: string]: unknown };
 type FigureLayout = {
   uirevision?: string;
-  dragmode?: string;
+  dragmode?: string | false;
   xaxis?: AxisLayout;
   yaxis?: AxisLayout;
   yaxis2?: AxisLayout;
@@ -38,6 +38,16 @@ type PlotOptions = {
   xHoverLabel?: { y: number; format: (x: number) => string };
 };
 
+/** 手机/触控：关闭 Plotly 拖拽，让整页在 chart 上也能纵向滚动 */
+function touchScrollFriendly(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(max-width: 900px), (pointer: coarse)").matches;
+}
+
+function plotDragMode(): false | "pan" {
+  return touchScrollFriendly() ? false : "pan";
+}
+
 export function usePlot(
   getFigure: () => { traces: unknown[]; layout: FigureLayout },
   revision: string,
@@ -59,7 +69,7 @@ export function usePlot(
 
   const applyView = (layout: FigureLayout): FigureLayout => ({
     ...layout,
-    dragmode: "pan",
+    dragmode: plotDragMode(),
     uirevision: `${home.current.key}@${generation.current}`,
   });
 
@@ -70,7 +80,7 @@ export function usePlot(
     generation.current += 1;
     const update: Record<string, unknown> = {
       uirevision: `${view.key}@${generation.current}`,
-      dragmode: "pan",
+      dragmode: plotDragMode(),
     };
     for (const key of ["xaxis", "yaxis", "yaxis2"] as const) {
       const axis = view[key];
@@ -94,12 +104,13 @@ export function usePlot(
     baseAnnotations.current = (figure.layout.annotations as object[] | undefined) ?? [];
     const layout = applyView(figure.layout);
     let alive = true;
+    const scrollZoom = !touchScrollFriendly();
     window.Plotly
       .react(plot, figure.traces as never, layout as never, {
         displayModeBar: false,
         displaylogo: false,
         responsive: true,
-        scrollZoom: true,
+        scrollZoom,
         doubleClick: false,
       })
       .then(() => {

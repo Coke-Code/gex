@@ -53,6 +53,11 @@ export default function Dashboard() {
   const [picked, setPicked] = useState<number | null>(null);
   const [tab, setTab] = useState<BoardTab>("gex");
 
+  const selectTab = (next: BoardTab) => {
+    setTab(next);
+    requestAnimationFrame(() => window.scrollTo(0, 0));
+  };
+
   useEffect(() => {
     setCountdown(REFRESH_SECONDS);
     const timer = setInterval(() => {
@@ -199,37 +204,45 @@ export default function Dashboard() {
         <button
           type="button"
           role="tab"
+          id="board-tab-gex"
           aria-selected={tab === "gex"}
+          aria-controls="board-panel-gex"
           className={`board-tab${tab === "gex" ? " is-active" : ""}`}
-          onClick={() => setTab("gex")}
+          onClick={() => selectTab("gex")}
         >
           Gex Level
         </button>
         <button
           type="button"
           role="tab"
+          id="board-tab-term"
           aria-selected={tab === "term"}
+          aria-controls="board-panel-term"
           className={`board-tab${tab === "term" ? " is-active" : ""}`}
-          onClick={() => setTab("term")}
+          onClick={() => selectTab("term")}
         >
           Term Structure
         </button>
         <button
           type="button"
           role="tab"
+          id="board-tab-change"
           aria-selected={tab === "change"}
+          aria-controls="board-panel-change"
           className={`board-tab${tab === "change" ? " is-active" : ""}`}
-          onClick={() => setTab("change")}
+          onClick={() => selectTab("change")}
         >
           Gex Change
         </button>
       </nav>
 
       <main className="board-main">
+        {tab === "gex" && (
         <div
-          className={`board-pane${tab === "gex" ? " is-active" : ""}`}
+          className="board-pane is-active"
           role="tabpanel"
-          hidden={tab !== "gex"}
+          id="board-panel-gex"
+          aria-labelledby="board-tab-gex"
         >
           <div className="board-grid board-grid--triple">
             <section className="panel space-panel panel--main">
@@ -285,10 +298,13 @@ export default function Dashboard() {
             </section>
           </div>
         </div>
+        )}
+        {tab === "term" && (
         <div
-          className={`board-pane${tab === "term" ? " is-active" : ""}`}
+          className="board-pane is-active"
           role="tabpanel"
-          hidden={tab !== "term"}
+          id="board-panel-term"
+          aria-labelledby="board-tab-term"
         >
           <div className="board-grid board-grid--triple">
             <section className="panel term-structure-panel panel--main">
@@ -325,10 +341,13 @@ export default function Dashboard() {
             </section>
           </div>
         </div>
+        )}
+        {tab === "change" && (
         <div
-          className={`board-pane${tab === "change" ? " is-active" : ""}`}
+          className="board-pane is-active"
           role="tabpanel"
-          hidden={tab !== "change"}
+          id="board-panel-change"
+          aria-labelledby="board-tab-change"
         >
           <div className="board-grid board-grid--triple">
             <section className="panel change-map-panel panel--main">
@@ -374,6 +393,7 @@ export default function Dashboard() {
             </section>
           </div>
         </div>
+        )}
       </main>
 
       <footer className="board-foot">
