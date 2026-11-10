@@ -25,9 +25,10 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
-const history = new HistoryStore(
-  path.resolve(__dirname, "../data/gex-history.json"),
-);
+const dataDir = process.env.GEX_DATA_DIR
+  ? path.resolve(process.env.GEX_DATA_DIR)
+  : path.resolve(__dirname, "../data");
+const history = new HistoryStore(path.join(dataDir, "gex-history.json"));
 
 const cache = new Map<string, { at: number; data: GexAnalysis }>();
 const inflight = new Map<string, Promise<GexAnalysis>>();

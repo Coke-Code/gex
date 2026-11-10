@@ -10,3 +10,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      # 本地历史快照（GEX 变化 / 演进）写入此目录，须挂载卷否则重建容器会丢
+      - GEX_DATA_DIR=/var/lib/gex
+    volumes:
+      - gex-data:/var/lib/gex
+volumes:
+  gex-data:

@@ -34,6 +34,9 @@ COPY --from=client-builder /app/client/dist ./client/dist
 
 ENV NODE_ENV=production
 ENV PORT=3001
+ENV GEX_DATA_DIR=/var/lib/gex
+
+RUN mkdir -p /var/lib/gex
 
 EXPOSE 3001
 
