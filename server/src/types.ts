@@ -53,6 +53,8 @@ export interface StrikeGex {
   byExpiry: StrikeExpiry[];
   /** 对比快照上的净 GEX。null 表示那时没有这一档，或还没有快照 */
   netThen: number | null;
+  /** 对比快照上的 OI（币）。null 表示旧快照无 OI 或无该档 */
+  oiThen: number | null;
   breakdown: Partial<
     Record<ExchangeSource, { callGex: number; putGex: number; oi: number }>
   >;
@@ -191,6 +193,14 @@ export interface GexAnalysis {
     callIv: number;
     rr: number;
   } | null;
+  /** 多到期 25Δ RR，近→远 */
+  skewTerm: Array<{
+    expiry: string;
+    days: number;
+    putIv: number;
+    callIv: number;
+    rr: number;
+  }>;
   venue: VenueFilter;
   venues: VenueStatus[];
   quality: DataQuality;

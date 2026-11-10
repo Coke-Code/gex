@@ -16,7 +16,11 @@ import TermStructureChart from "./TermStructureChart";
 import ExpiryMetricsChart from "./ExpiryMetricsChart";
 import GexChangeChart from "./GexChangeChart";
 import GexChangeMovers from "./GexChangeMovers";
+import HistoryGammaView, { historySpanLabel } from "./HistoryGammaView";
+import OiWallChart, { oiWallNote } from "./OiWallChart";
+import VolSkewChart from "./VolSkewChart";
 import SummaryModuleCard from "./SummaryModuleCard";
+import { useGexHistory } from "../hooks/useGexHistory";
 import { buildGexSummary } from "./gexSummary";
 import { BtcIcon, VenueFilterIcon, VenueIcon } from "./MarketIcons";
 
@@ -36,7 +40,13 @@ const HELP = {
     "Term Structure（GammaFlip 风格）：横轴到期（含 TOTAL），纵轴价位。绿带 Positive peaks（P1–P2）、红带 Negative peaks（N1–N2）、Flip 线；右缘为带内说明。虚线=现货，左轴该高度标现价。",
   termMetrics: "各到期净 GEX（柱）与未平仓币数（线，右轴）。与左侧期限图并排，比例同 Gex Level 空间/预测。",
   change:
-    "相对本地历史快照（约 4h 内最近一条）的净 GEX 变动，仅「全部」venue。左：按行权价的 Δ 柱（类似空间图）；右：|Δ| 最大的行权价排行。",
+    "相对本地历史快照（约 4h 内最近一条）的净 GEX 变动，仅「全部」venue。左：按行权价的 Δ 柱；右：排行含 ΔOI——|ΔGEX| 大但 |ΔOI| 小多为重定价，两者同放大才是挪仓。",
+  oiWall:
+    "现货 ±25% 各行权价的期权 OI（BTC）。橘色为 OI 最厚的前 3 档「墙」，与 GEX 峰可一致也可背离；OI 有数小时延迟。",
+  volSkew:
+    "多到期 ATM IV（左轴）与 25Δ 风险逆转 RR（右轴，Put IV − Call IV）。RR 为正表示防跌更贵。",
+  history:
+    "上：关键价位；背景色带=Regime（绿 Sticky / 红 Jumpy / 灰 平衡，与顶栏同阈）。下：净 GEX 热力。空白格=无该档快照。",
   summaryModule:
     "由当前快照规则生成的摘要与交易参考，非投资建议。与同页图表同源数据。",
   forecast:
@@ -45,14 +55,14 @@ const HELP = {
 
 const REFRESH_SECONDS = 60;
 const PILLS: VenueFilter[] = ["all", "deribit", "binance", "okx"];
-type BoardTab = "gex" | "term" | "change";
+type BoardTab = "gex" | "term" | "change" | "history";
 
 export default function Dashboard() {
   const { data, loading, error, refresh, venue, setVenue } = useGexData();
+  const [tab, setTab] = useState<BoardTab>("gex");
+  const history = useGexHistory(tab === "history");
   const [countdown, setCountdown] = useState(REFRESH_SECONDS);
   const [picked, setPicked] = useState<number | null>(null);
-  const [tab, setTab] = useState<BoardTab>("gex");
-
   const selectTab = (next: BoardTab) => {
     setTab(next);
     requestAnimationFrame(() => window.scrollTo(0, 0));
@@ -207,7 +217,7 @@ export default function Dashboard() {
           active={tab === "gex"}
           onSelect={() => selectTab("gex")}
         >
-          Gex Level
+          GEX 水平
         </BoardTabButton>
         <BoardTabButton
           tabId="board-tab-term"
@@ -215,7 +225,7 @@ export default function Dashboard() {
           active={tab === "term"}
           onSelect={() => selectTab("term")}
         >
-          Term Structure
+          GEX 期限
         </BoardTabButton>
         <BoardTabButton
           tabId="board-tab-change"
@@ -223,7 +233,15 @@ export default function Dashboard() {
           active={tab === "change"}
           onSelect={() => selectTab("change")}
         >
-          Gex Change
+          GEX 变化
+        </BoardTabButton>
+        <BoardTabButton
+          tabId="board-tab-history"
+          panelId="board-panel-history"
+          active={tab === "history"}
+          onSelect={() => selectTab("history")}
+        >
+          GEX 演进
         </BoardTabButton>
       </nav>
 
@@ -321,6 +339,20 @@ export default function Dashboard() {
               ) : (
                 <Empty loading={loading} />
               )}
+              <PanelTitle
+                k="IV · Skew"
+                help={HELP.volSkew}
+                s={(data?.skewTerm?.length ?? 0) > 0 ? "ATM IV · 25Δ RR" : "暂无多到期 RR"}
+              />
+              {data && data.expiries.length > 0 && (data.skewTerm?.length ?? 0) > 0 ? (
+                <VolSkewChart
+                  expiries={data.expiries}
+                  skewTerm={data.skewTerm ?? []}
+                  revision={revision}
+                />
+              ) : (
+                <div className="panel-empty panel-empty--sm">近端缺少可算 25Δ 的到期</div>
+              )}
             </section>
             <section className="panel summary-module-panel panel--side-summary">
               <PanelTitle
@@ -342,26 +374,42 @@ export default function Dashboard() {
         >
           <div className="board-grid board-grid--triple">
             <section className="panel change-map-panel panel--main">
-              <PanelTitle
-                k="Δ 空间"
-                help={HELP.change}
-                s={changeMapNote(data, venue, changeLabel)}
-              />
-              {data && price > 0 && venue === "all" && data.change ? (
-                <GexChangeChart
-                  strikes={data.strikes}
-                  price={price}
-                  ageHours={data.change.ageHours}
-                  revision={revision}
-                />
-              ) : (
-                <ChangeEmpty loading={loading} venue={venue} hasChange={Boolean(data?.change)} />
-              )}
+              <div className="change-main-stack">
+                <div className="change-main-gex">
+                  <PanelTitle
+                    k="Δ 空间"
+                    help={HELP.change}
+                    s={changeMapNote(data, venue, changeLabel)}
+                  />
+                  {data && price > 0 && venue === "all" && data.change ? (
+                    <GexChangeChart
+                      strikes={data.strikes}
+                      price={price}
+                      ageHours={data.change.ageHours}
+                      revision={revision}
+                    />
+                  ) : (
+                    <ChangeEmpty loading={loading} venue={venue} hasChange={Boolean(data?.change)} />
+                  )}
+                </div>
+                <div className="change-main-oi">
+                  <PanelTitle
+                    k="OI 墙"
+                    help={HELP.oiWall}
+                    s={data && price > 0 ? oiWallNote(data.strikes, price) : "现货 ±25%"}
+                  />
+                  {data && price > 0 && data.strikes.length > 0 ? (
+                    <OiWallChart strikes={data.strikes} price={price} revision={revision} />
+                  ) : (
+                    <Empty loading={loading} />
+                  )}
+                </div>
+              </div>
             </section>
             <section className="panel change-movers-panel panel--side-top">
               <PanelTitle
                 k="变动排行"
-                s="±25% 内 |Δ| 前 10 · 柱长=相对最大变动"
+                s="±25% 内 |ΔGEX| 前 10 · 对照 ΔOI"
               />
               {data && price > 0 && venue === "all" && data.change && changeLabel ? (
                 <GexChangeMovers
@@ -381,6 +429,50 @@ export default function Dashboard() {
                 s={summaryPack?.modules[2].lead ?? "流向与变化"}
               />
               <SummaryModuleCard module={summaryPack?.modules[2] ?? null} />
+            </section>
+          </div>
+        </div>
+        )}
+        {tab === "history" && (
+        <div
+          className="board-pane is-active"
+          role="tabpanel"
+          id="board-panel-history"
+          aria-labelledby="board-tab-history"
+        >
+          <div className="board-grid board-grid--triple">
+            <section className="panel history-panel panel--main">
+              <PanelTitle
+                k="结构演进"
+                help={HELP.history}
+                s={historySpanLabel(history.points) ?? "等待本地采样"}
+              />
+              {history.points.length >= 2 ? (
+                <HistoryGammaView points={history.points} revision={`history@${history.points.length}`} />
+              ) : (
+                <HistoryEmpty loading={history.loading || loading} error={history.error} />
+              )}
+            </section>
+            <section className="panel history-side-panel panel--side-top">
+              <PanelTitle k="相对 4h 基准" help={HELP.change} s={changeMapNote(data, venue, changeLabel)} />
+              {data && price > 0 && venue === "all" && data.change ? (
+                <GexChangeChart
+                  strikes={data.strikes}
+                  price={price}
+                  ageHours={data.change.ageHours}
+                  revision={revision}
+                />
+              ) : (
+                <ChangeEmpty loading={loading} venue={venue} hasChange={Boolean(data?.change)} />
+              )}
+            </section>
+            <section className="panel summary-module-panel panel--side-summary">
+              <PanelTitle
+                k={summaryPack?.modules[0].title ?? "摘要"}
+                help={HELP.summaryModule}
+                s={summaryPack?.modules[0].lead ?? "波动环境"}
+              />
+              <SummaryModuleCard module={summaryPack?.modules[0] ?? null} />
             </section>
           </div>
         </div>
@@ -473,6 +565,16 @@ function PanelTitle({ k, s, help }: { k: string; s: string; help?: string }) {
 
 function Empty({ loading }: { loading: boolean }) {
   return <div className="panel-empty">{loading ? "正在读取 BTC 期权…" : "这个来源没有可用持仓"}</div>;
+}
+
+function HistoryEmpty({ loading, error }: { loading: boolean; error: string | null }) {
+  if (loading) return <div className="panel-empty">正在读取历史…</div>;
+  if (error) return <div className="panel-empty">{error}</div>;
+  return (
+    <div className="panel-empty">
+      本地还没有足够采样。服务运行约 10 分钟后会出现第二点；全链路需保持 API 在「全部」venue 下定期刷新。
+    </div>
+  );
 }
 
 function ChangeEmpty({

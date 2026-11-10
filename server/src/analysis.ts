@@ -1,6 +1,6 @@
 // 把 BTC 期权链收成价位、期限和速度。各所先折成币数，再算同一套美元 GEX。
 
-import { black76Delta, yearFraction } from "./greeks/black76";
+import { yearFraction } from "./greeks/black76";
 import {
   GexContract,
   aggregateStrikes,
@@ -10,6 +10,7 @@ import {
   gexAtSpotOnCurve,
 } from "./greeks/exposure";
 import { chartMarkers } from "./markers";
+import { buildSkewTerm, pickFrontSkew } from "./skewTerm";
 import { buildTermStructure, maxPain } from "./termStructure";
 import {
   DataQuality,
@@ -149,63 +150,6 @@ function splitByExpiry(used: UsedOption[], nowMs: number): Map<number, StrikeExp
     );
   }
   return byStrike;
-}
-
-function frontSkew(used: UsedOption[], nowMs: number): GexAnalysis["skew"] {
-  const groups = new Map<string, UsedOption[]>();
-  for (const option of used) {
-    const day = utcDay(option.expiryTimestamp);
-    const list = groups.get(day);
-    if (list) list.push(option);
-    else groups.set(day, [option]);
-  }
-
-  const ranked = [...groups.entries()]
-    .map(([day, options]) => ({
-      day,
-      options,
-      days: Math.max(
-        0,
-        (Math.min(...options.map((option) => option.expiryTimestamp)) - nowMs) /
-          (24 * 60 * 60 * 1000),
-      ),
-    }))
-    .filter((group) => group.options.length >= 4)
-    .sort((a, b) => a.days - b.days);
-
-  const front =
-    ranked.find((group) => group.days >= 0.5 && group.days <= 10) ?? ranked[0];
-  if (!front) return null;
-
-  const forward = median(front.options.map((option) => option.forwardPrice));
-  let call: { iv: number; distance: number } | null = null;
-  let put: { iv: number; distance: number } | null = null;
-  for (const option of front.options) {
-    const delta = black76Delta(
-      forward,
-      option.strike,
-      option.timeYears,
-      option.impliedVolatility,
-      option.optionType,
-    );
-    const target = option.optionType === "call" ? 0.25 : -0.25;
-    const distance = Math.abs(delta - target);
-    if (distance > 0.08) continue;
-    if (option.optionType === "call" && (!call || distance < call.distance)) {
-      call = { iv: option.impliedVolatility, distance };
-    }
-    if (option.optionType === "put" && (!put || distance < put.distance)) {
-      put = { iv: option.impliedVolatility, distance };
-    }
-  }
-  if (!call || !put) return null;
-  return {
-    expiry: front.day,
-    days: front.days,
-    putIv: put.iv,
-    callIv: call.iv,
-    rr: put.iv - call.iv,
-  };
 }
 
 export function analyzeChain(input: {
@@ -429,7 +373,20 @@ export function analyzeChain(input: {
       gexChangePer1Pct: up == null ? null : up - totalNetGex,
     },
     change: null,
-    skew: frontSkew(used, nowMs),
+    skew: (() => {
+      const term = buildSkewTerm(used, nowMs);
+      const front = pickFrontSkew(term);
+      return front
+        ? {
+            expiry: front.expiry,
+            days: front.days,
+            putIv: front.putIv,
+            callIv: front.callIv,
+            rr: front.rr,
+          }
+        : null;
+    })(),
+    skewTerm: buildSkewTerm(used, nowMs),
     venue,
     venues,
     quality,

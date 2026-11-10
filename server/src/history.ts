@@ -6,7 +6,17 @@ import path from "path";
 export interface HistoryStrike {
   strike: number;
   netGex: number;
+  /** 旧快照可能没有；对比 ΔOI 时需有值 */
+  oi?: number;
 }
+
+export interface HistoryLevels {
+  p1: number | null;
+  n1: number | null;
+  a1: number | null;
+}
+
+export type HistoryHedgingPressure = "positive" | "negative" | "neutral";
 
 export interface HistorySnap {
   timestamp: number;
@@ -14,8 +24,12 @@ export interface HistorySnap {
   totalNetGex: number;
   totalAbsGex: number;
   underlyingPrice: number;
+  /** 与当时顶栏 Regime 一致；旧快照可缺，由客户端按 2% 规则回填 */
+  hedgingPressure?: HistoryHedgingPressure;
   /** 旧文件没有这一项。没有档位时只能比翻转，不能比某一档变重了没有 */
   strikes: HistoryStrike[];
+  /** GammaFlip 式关键价：P1/N1/A1，旧快照可缺 */
+  levels?: HistoryLevels;
 }
 
 const FOUR_HOURS = 4 * 60 * 60 * 1000;
@@ -103,8 +117,11 @@ function cleanStrikes(value: unknown): HistoryStrike[] {
     if (!row || typeof row !== "object") continue;
     const strike = (row as HistoryStrike).strike;
     const netGex = (row as HistoryStrike).netGex;
+    const oi = (row as HistoryStrike).oi;
     if (Number.isFinite(strike) && Number.isFinite(netGex)) {
-      strikes.push({ strike, netGex });
+      const entry: HistoryStrike = { strike, netGex };
+      if (Number.isFinite(oi) && (oi as number) >= 0) entry.oi = oi as number;
+      strikes.push(entry);
     }
   }
   return strikes;

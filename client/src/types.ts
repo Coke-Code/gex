@@ -18,6 +18,7 @@ export interface StrikeGex {
   volumePartial: boolean;
   byExpiry: StrikeExpiry[];
   netThen: number | null;
+  oiThen: number | null;
 }
 
 export interface ExpirySlice {
@@ -116,9 +117,40 @@ export interface GexAnalysis {
     callIv: number;
     rr: number;
   } | null;
+  skewTerm: SkewSlice[];
   venue: VenueFilter;
   venues: VenueStatus[];
   quality: DataQuality;
+}
+
+export interface SkewSlice {
+  expiry: string;
+  days: number;
+  putIv: number;
+  callIv: number;
+  rr: number;
+}
+
+export interface HistoryLevels {
+  p1: number | null;
+  n1: number | null;
+  a1: number | null;
+}
+
+export interface HistorySnap {
+  timestamp: number;
+  flipPoint: number | null;
+  totalNetGex: number;
+  totalAbsGex: number;
+  underlyingPrice: number;
+  hedgingPressure?: "positive" | "negative" | "neutral";
+  strikes: Array<{ strike: number; netGex: number; oi?: number }>;
+  levels?: HistoryLevels;
+}
+
+export interface HistoryResponse {
+  success: boolean;
+  data: HistorySnap[];
 }
 
 export interface GexResponse {

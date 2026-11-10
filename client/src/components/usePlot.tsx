@@ -219,13 +219,15 @@ export function usePlot(
 export function PlotFrame({
   plotRef,
   onReset,
+  resetTitle = "滚轮缩放，拖拽平移，点这里回到初始范围",
 }: {
   plotRef: RefObject<HTMLDivElement>;
   onReset: () => void;
+  resetTitle?: string;
 }) {
   return (
     <div className="plot-wrap">
-      <button type="button" className="plot-reset" onClick={onReset} title="滚轮缩放，拖拽平移，点这里回到初始范围">
+      <button type="button" className="plot-reset" onClick={onReset} title={resetTitle}>
         复位
       </button>
       <div ref={plotRef} className="plot" />

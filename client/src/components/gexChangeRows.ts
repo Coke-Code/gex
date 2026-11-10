@@ -39,3 +39,14 @@ export function gexChangeRanked(
 export function totalNetDelta(rows: GexChangeRow[]): number {
   return rows.reduce((sum, item) => sum + item.delta, 0);
 }
+
+export function totalOiDelta(rows: GexChangeRow[]): number | null {
+  let sum = 0;
+  let seen = false;
+  for (const item of rows) {
+    if (item.row.oiThen == null) continue;
+    sum += item.row.oi - item.row.oiThen;
+    seen = true;
+  }
+  return seen ? sum : null;
+}

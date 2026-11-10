@@ -88,6 +88,7 @@ export function aggregateStrikes(
         volumePartial: false,
         byExpiry: [],
         netThen: null,
+        oiThen: null,
         breakdown: {},
         sawVolume: false,
         missedVolume: false,

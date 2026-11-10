@@ -57,6 +57,12 @@ async function getAnalysis(venueRaw: unknown): Promise<GexAnalysis> {
   return job;
 }
 
+function historyLevels(analysis: GexAnalysis) {
+  const pick = (id: string) =>
+    analysis.markers.find((marker) => marker.id === id)?.price ?? null;
+  return { p1: pick("P1"), n1: pick("N1"), a1: pick("A1") };
+}
+
 function remember(analysis: GexAnalysis): void {
   if (analysis.venue !== "all" || !(analysis.underlyingPrice > 0)) return;
   history.append("BTC", {
@@ -65,9 +71,12 @@ function remember(analysis: GexAnalysis): void {
     totalNetGex: analysis.totalNetGex,
     totalAbsGex: analysis.totalAbsGex,
     underlyingPrice: analysis.underlyingPrice,
+    levels: historyLevels(analysis),
+    hedgingPressure: analysis.hedgingPressure,
     strikes: analysis.strikes.map((strike) => ({
       strike: strike.strike,
       netGex: strike.netGex,
+      oi: strike.oi,
     })),
   });
 }
@@ -78,10 +87,14 @@ function withBaseline(analysis: GexAnalysis, points: HistorySnap[]): GexAnalysis
     return {
       ...analysis,
       change: null,
-      strikes: analysis.strikes.map((strike) => ({ ...strike, netThen: null })),
+      strikes: analysis.strikes.map((strike) => ({
+        ...strike,
+        netThen: null,
+        oiThen: null,
+      })),
     };
   }
-  const past = new Map(base.strikes.map((strike) => [strike.strike, strike.netGex]));
+  const past = new Map(base.strikes.map((strike) => [strike.strike, strike]));
   return {
     ...analysis,
     change: {
@@ -90,10 +103,16 @@ function withBaseline(analysis: GexAnalysis, points: HistorySnap[]): GexAnalysis
       flipPoint: base.flipPoint,
       price: base.underlyingPrice,
     },
-    strikes: analysis.strikes.map((strike) => ({
-      ...strike,
-      netThen: past.has(strike.strike) ? (past.get(strike.strike) as number) : null,
-    })),
+    strikes: analysis.strikes.map((strike) => {
+      const then = past.get(strike.strike);
+      const oiThen =
+        then != null && Number.isFinite(then.oi) ? (then.oi as number) : null;
+      return {
+        ...strike,
+        netThen: then != null ? then.netGex : null,
+        oiThen,
+      };
+    }),
   };
 }
 
