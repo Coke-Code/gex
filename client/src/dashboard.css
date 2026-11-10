@@ -980,6 +980,10 @@
   font-size: 11px;
   color: var(--text-secondary);
   cursor: pointer;
+  min-width: 3.25rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 .board-pill {
@@ -1904,15 +1908,26 @@
 
   .board {
     height: auto;
-    min-height: 100dvh;
+    min-height: 100svh;
     max-height: none;
     overflow: visible;
+    overflow-anchor: none;
+  }
+
+  .board-main,
+  .board-pane,
+  .board-grid {
+    overflow-anchor: none;
   }
 
   .board-head,
   .board-stats {
     flex-wrap: wrap;
     gap: 10px;
+  }
+
+  .board-stats {
+    min-height: 4.5rem;
   }
 
   .board-pills {
@@ -1971,11 +1986,80 @@
     max-height: 220px;
   }
 
-  .term-structure-panel .plot-wrap,
-  .change-map-panel .plot-wrap {
+  .term-structure-panel .plot-wrap {
     height: 300px;
     min-height: 300px;
     max-height: 300px;
+  }
+
+  .change-main-stack {
+    flex: none;
+    min-height: auto;
+    gap: 8px;
+  }
+
+  .change-main-gex,
+  .change-main-oi {
+    flex: none;
+    min-height: auto;
+    max-height: none;
+  }
+
+  .change-main-gex .plot-wrap,
+  .gex-change-chart .plot-wrap {
+    height: min(280px, 42dvh);
+    min-height: 240px;
+    max-height: 320px;
+  }
+
+  .change-main-oi .plot-wrap,
+  .oi-wall-chart .plot-wrap {
+    height: min(220px, 34dvh);
+    min-height: 200px;
+    max-height: 260px;
+  }
+
+  .change-map-panel {
+    min-height: auto;
+  }
+
+  .history-panel {
+    min-height: auto;
+  }
+
+  .history-gf-view {
+    flex: none;
+    min-height: auto;
+    gap: 8px;
+  }
+
+  .history-gf-levels {
+    flex: none;
+    max-height: none;
+    min-height: auto;
+  }
+
+  .history-gf-levels .plot-wrap {
+    height: min(220px, 32dvh);
+    min-height: 200px;
+    max-height: 280px;
+  }
+
+  .history-gf-heatmap {
+    flex: none;
+    min-height: auto;
+  }
+
+  .history-gf-heatmap .plot-wrap {
+    height: min(300px, 46dvh);
+    min-height: 260px;
+    max-height: 360px;
+  }
+
+  .history-side-panel .plot-wrap {
+    height: min(280px, 42dvh);
+    min-height: 240px;
+    max-height: 320px;
   }
 
   .board .plot-wrap .plot,
@@ -2013,15 +2097,20 @@
 
   .board-grid--triple > .panel--main,
   .board-grid--triple > .space-panel,
-  .board-grid--triple > .term-structure-panel,
-  .board-grid--triple > .change-map-panel {
+  .board-grid--triple > .term-structure-panel {
     min-height: min(480px, 58dvh);
+  }
+
+  .board-grid--triple > .change-map-panel,
+  .board-grid--triple > .history-panel {
+    min-height: auto;
   }
 
   .board-grid--triple > .panel--side-top,
   .board-grid--triple > .forecast-panel,
   .board-grid--triple > .term-metrics-panel,
-  .board-grid--triple > .change-movers-panel {
+  .board-grid--triple > .change-movers-panel,
+  .board-grid--triple > .history-side-panel {
     min-height: min(280px, 34dvh);
   }
 

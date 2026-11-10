@@ -22,6 +22,7 @@ import VolSkewChart from "./VolSkewChart";
 import SummaryModuleCard from "./SummaryModuleCard";
 import { useGexHistory } from "../hooks/useGexHistory";
 import { buildGexSummary } from "./gexSummary";
+import BoardRefreshButton from "./BoardRefreshButton";
 import { BtcIcon, VenueFilterIcon, VenueIcon } from "./MarketIcons";
 
 const HELP = {
@@ -53,7 +54,6 @@ const HELP = {
     "Net GEX Forecast（Gamma Profile）：假想现货在各价位时的净 Gamma 对冲。绿区 Sticky（正 GEX），红区 Jumpy（负 GEX）。曲线为展示样条，底层仍按 0.5% 步长计算。虚线=现价。",
 } as const;
 
-const REFRESH_SECONDS = 60;
 const PILLS: VenueFilter[] = ["all", "deribit", "binance", "okx"];
 type BoardTab = "gex" | "term" | "change" | "history";
 
@@ -61,26 +61,11 @@ export default function Dashboard() {
   const { data, loading, error, refresh, venue, setVenue } = useGexData();
   const [tab, setTab] = useState<BoardTab>("gex");
   const history = useGexHistory(tab === "history");
-  const [countdown, setCountdown] = useState(REFRESH_SECONDS);
   const [picked, setPicked] = useState<number | null>(null);
   const selectTab = (next: BoardTab) => {
     setTab(next);
     requestAnimationFrame(() => window.scrollTo(0, 0));
   };
-
-  useEffect(() => {
-    setCountdown(REFRESH_SECONDS);
-    const timer = setInterval(() => {
-      setCountdown((value) => {
-        if (value <= 1) {
-          refresh(true);
-          return REFRESH_SECONDS;
-        }
-        return value - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [refresh, data?.timestamp]);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
@@ -128,9 +113,11 @@ export default function Dashboard() {
             </button>
           ))}
         </div>
-        <button type="button" className="board-refresh" onClick={() => refresh()} disabled={loading}>
-          {loading ? "读取" : `${countdown}s`}
-        </button>
+        <BoardRefreshButton
+          busy={loading}
+          onBackgroundRefresh={() => refresh(true)}
+          onManualRefresh={() => refresh()}
+        />
       </header>
 
       {data && price > 0 && data.quality.contractsUsed > 0 && (

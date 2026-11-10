@@ -108,13 +108,12 @@ export function usePlot(
       .then(() => {
         if (!alive || !ref.current) return;
         const node = ref.current;
-        node.style.height = "";
-        node.style.width = "";
-        resize();
-        requestAnimationFrame(() => {
-          resize();
-          requestAnimationFrame(resize);
-        });
+        const mobile = touchScrollFriendly();
+        if (!mobile) {
+          node.style.height = "";
+          node.style.width = "";
+        }
+        requestAnimationFrame(resize);
       });
     const onDoubleClick = () => reset();
     const onPlotClick = (event: { points?: Array<{ x?: unknown; curveNumber?: number }> }) => {
@@ -194,12 +193,10 @@ export function usePlot(
 
     if (touchScrollFriendly()) {
       requestAnimationFrame(resize);
-      const onViewport = () => requestAnimationFrame(resize);
-      window.addEventListener("orientationchange", onViewport);
-      window.visualViewport?.addEventListener("resize", onViewport);
+      const onOrientation = () => requestAnimationFrame(resize);
+      window.addEventListener("orientationchange", onOrientation);
       return () => {
-        window.removeEventListener("orientationchange", onViewport);
-        window.visualViewport?.removeEventListener("resize", onViewport);
+        window.removeEventListener("orientationchange", onOrientation);
       };
     }
 
