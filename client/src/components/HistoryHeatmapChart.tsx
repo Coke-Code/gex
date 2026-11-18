@@ -1,15 +1,17 @@
 import { HistorySnap } from "../types";
 import { fmtPx, fmtUsd } from "./format";
+import { historyTimeAxis } from "./historyChartTime";
 import { buildHistoryHeatmap, heatmapZBounds } from "./historyHeatmap";
 import {
   AXIS,
   GRID,
   HEATMAP_GEX,
+  HISTORY_HEATMAP_FLIP,
+  HISTORY_HEATMAP_PRICE,
   HOVER_BG,
   HOVER_BORDER,
   INK,
   NOTE,
-  SPOT_LINE,
   ZERO,
 } from "./palette";
 import { PlotFrame, usePlot } from "./usePlot.tsx";
@@ -48,6 +50,8 @@ function build(points: HistorySnap[]) {
     }),
   );
 
+  const { range, tickvals } = historyTimeAxis(points);
+
   return {
     traces: [
       {
@@ -80,13 +84,28 @@ function build(points: HistorySnap[]) {
         name: "现货",
         x: model.times,
         y: model.prices,
-        line: { color: SPOT_LINE, width: 2 },
+        line: { color: HISTORY_HEATMAP_PRICE, width: 2 },
         hovertemplate: "%{x}<br>现货 %{y:,.0f}<extra></extra>",
+      },
+      {
+        type: "scatter",
+        mode: "lines",
+        name: "Flip",
+        x: model.times,
+        y: model.flips,
+        line: { color: HISTORY_HEATMAP_FLIP, width: 2 },
+        connectgaps: false,
+        hovertemplate: "%{x}<br>Flip %{y:,.0f}<extra></extra>",
       },
     ],
     layout: {
       xaxis: {
         fixedrange: false,
+        type: "date",
+        range,
+        tickmode: "array",
+        tickvals,
+        tickformat: "%m/%d",
         tickfont: { size: 8, color: AXIS },
         gridcolor: GRID,
         showspikes: true,
@@ -104,10 +123,17 @@ function build(points: HistorySnap[]) {
         title: { text: "行权价", font: { size: 9, color: AXIS } },
         autorange: true,
       },
-      margin: { l: 54, r: 52, t: 4, b: 32 },
+      margin: { l: 54, r: 52, t: 8, b: 32 },
       paper_bgcolor: "transparent",
       plot_bgcolor: "transparent",
-      showlegend: false,
+      showlegend: true,
+      legend: {
+        orientation: "h",
+        y: 1.06,
+        x: 1,
+        xanchor: "right",
+        font: { size: 8, color: INK },
+      },
       hovermode: "closest",
       uirevision: "history-heatmap-board",
       hoverlabel: {
@@ -122,5 +148,5 @@ function build(points: HistorySnap[]) {
 
 export function heatmapSubtitle(points: HistorySnap[]): string {
   const model = buildHistoryHeatmap(points);
-  return model ? `${model.spanLabel} · 红/绿=净 GEX` : "现货邻域 · 净 GEX";
+  return model ? `${model.spanLabel} · 30 天 · 红/绿=净 GEX` : "30 天 · 净 GEX";
 }

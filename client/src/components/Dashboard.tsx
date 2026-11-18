@@ -47,7 +47,7 @@ const HELP = {
   volSkew:
     "多到期 ATM IV（左轴）与 25Δ 风险逆转 RR（右轴，Put IV − Call IV）。RR 为正表示防跌更贵。",
   history:
-    "上：关键价位；背景色带=Regime（绿 Sticky / 红 Jumpy / 灰 平衡，与顶栏同阈）。下：净 GEX 热力。空白格=无该档快照。",
+    "行权价×时间净 GEX 热力，叠指数与 Flip。横轴 30 天、5 天一刻度。空白格=无该档快照。",
   summaryModule:
     "由当前快照规则生成的摘要与交易参考，非投资建议。与同页图表同源数据。",
   forecast:

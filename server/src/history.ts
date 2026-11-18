@@ -49,7 +49,8 @@ export function pickBaseline(points: HistorySnap[], now: number): HistorySnap | 
   return eligible.find((point) => point.strikes.length > 0) ?? eligible[0];
 }
 
-const MAX_POINTS = 288;
+/** 5 分钟采样 × 30 天 */
+const MAX_POINTS = 30 * 24 * 12;
 const MIN_GAP_MS = 4 * 60 * 1000;
 
 export class HistoryStore {

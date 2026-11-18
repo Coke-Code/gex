@@ -1,10 +1,12 @@
 import { HistorySnap } from "../types";
+import { historyWindow } from "./historyChartTime";
 
 export interface HistoryHeatmapModel {
   times: Date[];
   strikes: number[];
   z: (number | null)[][];
   prices: number[];
+  flips: (number | null)[];
   spanLabel: string;
 }
 
@@ -12,13 +14,15 @@ export function buildHistoryHeatmap(
   points: HistorySnap[],
   options?: { maxTimes?: number; span?: number; maxStrikes?: number },
 ): HistoryHeatmapModel | null {
-  const maxTimes = options?.maxTimes ?? 120;
+  const maxTimes = options?.maxTimes ?? 10_000;
   const span = options?.span ?? 0.25;
   const maxStrikes = options?.maxStrikes ?? 96;
-  const rows = points.slice(-maxTimes);
+  const windowed = historyWindow(points);
+  const rows = windowed.slice(-maxTimes);
   if (rows.length < 2) return null;
 
   const prices = rows.map((row) => row.underlyingPrice);
+  const flips = rows.map((row) => (row.flipPoint != null && row.flipPoint > 0 ? row.flipPoint : null));
   const sortedPrices = [...prices].sort((a, b) => a - b);
   const mid = Math.floor(sortedPrices.length / 2);
   const anchor =
@@ -56,6 +60,7 @@ export function buildHistoryHeatmap(
     strikes,
     z,
     prices,
+    flips,
     spanLabel: `±${Math.round(span * 100)}%`,
   };
 }

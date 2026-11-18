@@ -28,3 +28,8 @@ export const HEATMAP_GEX: Array<[number, string]> = [
 
 /** 演进 / 关键价位图上的现货轨迹 */
 export const SPOT_LINE = "#2563eb";
+
+/** 演进热力图叠加线 */
+export const HISTORY_HEATMAP_PRICE = "#1a1a1a";
+export const HISTORY_HEATMAP_FLIP = "#b14ad4";
+
