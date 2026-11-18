@@ -2103,6 +2103,37 @@
     min-height: 0;
   }
 
+  /* 侧栏有定高时排行用 flex 均分；移动端整页高度不定，1 1 0 会把各行压扁 */
+  .change-movers-panel .change-movers {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .change-movers-panel .change-mover-scroll {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .change-movers-panel .change-mover-list {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+    display: block;
+  }
+
+  .change-movers-panel .change-mover-item {
+    flex: none;
+    min-height: 1.65rem;
+    padding: 3px 0;
+  }
+
+  .change-movers-panel .change-movers-empty {
+    flex: none;
+    min-height: 4rem;
+  }
+
   .space-panel .panel-h-sub {
     font-size: 11px;
   }
