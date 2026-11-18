@@ -1,7 +1,7 @@
-import { HistorySnap } from "../types";
+import { HistoryHeatmapPayload } from "../types";
 import { fmtPx, fmtUsd } from "./format";
-import { historyTimeAxis } from "./historyChartTime";
-import { buildHistoryHeatmap, heatmapZBounds } from "./historyHeatmap";
+import { historyTimeAxisFromTimestamps } from "./historyChartTime";
+import { heatmapZBounds, modelFromHistoryPayload } from "./historyHeatmap";
 import {
   AXIS,
   GRID,
@@ -17,13 +17,13 @@ import {
 import { PlotFrame, usePlot } from "./usePlot.tsx";
 
 export default function HistoryHeatmapChart({
-  points,
+  payload,
   revision,
 }: {
-  points: HistorySnap[];
+  payload: HistoryHeatmapPayload;
   revision: string;
 }) {
-  const { ref, reset } = usePlot(() => build(points), `${revision}:heatmap`);
+  const { ref, reset } = usePlot(() => build(payload), `${revision}:heatmap`);
   return (
     <div className="history-gf-heatmap">
       <PlotFrame plotRef={ref} onReset={reset} resetTitle="滚轮/拖拽仅缩放时间轴；纵轴为行权价" />
@@ -31,8 +31,8 @@ export default function HistoryHeatmapChart({
   );
 }
 
-function build(points: HistorySnap[]) {
-  const model = buildHistoryHeatmap(points);
+function build(payload: HistoryHeatmapPayload) {
+  const model = modelFromHistoryPayload(payload);
   if (!model) {
     return {
       traces: [],
@@ -50,7 +50,7 @@ function build(points: HistorySnap[]) {
     }),
   );
 
-  const { range, tickvals } = historyTimeAxis(points);
+  const { range, tickvals } = historyTimeAxisFromTimestamps(payload.t);
 
   return {
     traces: [
@@ -146,7 +146,7 @@ function build(points: HistorySnap[]) {
   };
 }
 
-export function heatmapSubtitle(points: HistorySnap[]): string {
-  const model = buildHistoryHeatmap(points);
+export function heatmapSubtitle(payload: HistoryHeatmapPayload): string {
+  const model = modelFromHistoryPayload(payload);
   return model ? `${model.spanLabel} · 30 天 · 红/绿=净 GEX` : "30 天 · 净 GEX";
 }

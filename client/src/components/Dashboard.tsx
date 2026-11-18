@@ -432,10 +432,13 @@ export default function Dashboard() {
               <PanelTitle
                 k="结构演进"
                 help={HELP.history}
-                s={historySpanLabel(history.points) ?? "等待本地采样"}
+                s={historySpanLabel(history.payload) ?? "等待本地采样"}
               />
-              {history.points.length >= 2 ? (
-                <HistoryGammaView points={history.points} revision={`history@${history.points.length}`} />
+              {history.payload.t.length >= 2 ? (
+                <HistoryGammaView
+                  payload={history.payload}
+                  revision={`history@${history.payload.t.length}`}
+                />
               ) : (
                 <HistoryEmpty loading={history.loading || loading} error={history.error} />
               )}

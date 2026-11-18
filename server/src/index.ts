@@ -1,11 +1,14 @@
 // BTC 期权看板 API。Deribit、Binance、OKX 能连上的都会算进去。
 
 import express, { Request, Response } from "express";
+import compression from "compression";
 import cors from "cors";
 import path from "path";
 import fs from "fs";
 import { loadBtc, parseVenue } from "./market";
 import { HistorySnap, HistoryStore, pickBaseline } from "./history";
+import { heatmapPayloadFromSeries } from "./historyHeatmapApi";
+import { HISTORY_WINDOW_MS } from "./historyTypes";
 import { useSystemProxy } from "./proxy";
 import { GexAnalysis, GexResponse } from "./types";
 
@@ -16,6 +19,7 @@ const CACHE_MS = 15_000;
 useSystemProxy();
 
 app.use(cors());
+app.use(compression());
 app.use(express.json());
 app.use("/api", (req, res, next) => {
   // 行情每次都要带正文。Express 默认 ETag，内容没变就回 304 且正文为空。
@@ -163,7 +167,9 @@ app.get("/api/gex/:underlying", async (req: Request, res: Response) => {
 
 app.get("/api/gex/:underlying/history", (req: Request, res: Response) => {
   const coin = String(req.params.underlying || "BTC").toUpperCase();
-  res.json({ success: true, data: history.get(coin) });
+  const since = Date.now() - HISTORY_WINDOW_MS;
+  const data = heatmapPayloadFromSeries(history.get(coin), since);
+  res.json({ success: true, data });
 });
 
 const clientDist = path.resolve(__dirname, "../../client/dist");

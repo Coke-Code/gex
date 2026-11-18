@@ -137,20 +137,18 @@ export interface HistoryLevels {
   a1: number | null;
 }
 
-export interface HistorySnap {
-  timestamp: number;
-  flipPoint: number | null;
-  totalNetGex: number;
-  totalAbsGex: number;
-  underlyingPrice: number;
-  hedgingPressure?: "positive" | "negative" | "neutral";
-  strikes: Array<{ strike: number; netGex: number; oi?: number }>;
-  levels?: HistoryLevels;
+export interface HistoryHeatmapPayload {
+  span: number;
+  t: number[];
+  p: number[];
+  f: (number | null)[];
+  k: number[];
+  z: (number | null)[][];
 }
 
 export interface HistoryResponse {
   success: boolean;
-  data: HistorySnap[];
+  data: HistoryHeatmapPayload;
 }
 
 export interface GexResponse {

@@ -1,28 +1,28 @@
-import { HistorySnap } from "../types";
+import { HistoryHeatmapPayload } from "../types";
 import { HISTORY_DAYS } from "./historyChartTime";
 import { fmtTenor } from "./format";
 import HistoryHeatmapChart, { heatmapSubtitle } from "./HistoryHeatmapChart";
 
 export default function HistoryGammaView({
-  points,
+  payload,
   revision,
 }: {
-  points: HistorySnap[];
+  payload: HistoryHeatmapPayload;
   revision: string;
 }) {
   return (
     <div className="history-gf-view">
-      <HistoryHeatmapChart points={points} revision={revision} />
+      <HistoryHeatmapChart payload={payload} revision={revision} />
     </div>
   );
 }
 
-export function historySpanLabel(points: HistorySnap[]): string | null {
-  if (points.length < 2) return null;
-  const first = points[0].timestamp;
-  const last = points[points.length - 1].timestamp;
+export function historySpanLabel(payload: HistoryHeatmapPayload): string | null {
+  if (payload.t.length < 2) return null;
+  const first = payload.t[0];
+  const last = payload.t[payload.t.length - 1];
   const hours = (last - first) / (60 * 60 * 1000);
-  const heat = heatmapSubtitle(points);
+  const heat = heatmapSubtitle(payload);
   const windowDays = Math.min(HISTORY_DAYS, hours / 24);
-  return `${fmtTenor(windowDays)} / ${HISTORY_DAYS} 天 · ${points.length} 点 · ${heat}`;
+  return `${fmtTenor(windowDays)} / ${HISTORY_DAYS} 天 · ${payload.t.length} 点/时 · ${heat}`;
 }
