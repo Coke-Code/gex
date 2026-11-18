@@ -19,6 +19,7 @@ import GexChangeMovers from "./GexChangeMovers";
 import HistoryGammaView, { historySpanLabel } from "./HistoryGammaView";
 import OiWallChart, { oiWallNote } from "./OiWallChart";
 import VolSkewChart from "./VolSkewChart";
+import { touchScrollFriendly } from "./plotTouch";
 import SummaryModuleCard from "./SummaryModuleCard";
 import { useGexHistory } from "../hooks/useGexHistory";
 import { buildGexSummary } from "./gexSummary";
@@ -68,6 +69,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    if (touchScrollFriendly()) return;
     const id = requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
     return () => cancelAnimationFrame(id);
   }, [tab]);

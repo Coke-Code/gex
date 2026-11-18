@@ -1900,7 +1900,7 @@
 
   .board {
     height: auto;
-    min-height: 100svh;
+    min-height: auto;
     max-height: none;
     overflow: visible;
     overflow-anchor: none;
@@ -1952,6 +1952,12 @@
   .board .plot-wrap {
     touch-action: pan-y pinch-zoom;
     flex: none !important;
+    contain: layout style;
+  }
+
+  .board .plot-wrap > .plot {
+    flex: none;
+    min-height: 100%;
   }
 
   .panel {
@@ -1961,6 +1967,7 @@
   .space-chart,
   .term-structure-chart,
   .expiry-metrics-chart,
+  .vol-skew-chart,
   .gex-change-chart {
     flex: none;
   }
@@ -1999,16 +2006,16 @@
 
   .change-main-gex .plot-wrap,
   .gex-change-chart .plot-wrap {
-    height: min(280px, 42dvh);
-    min-height: 240px;
-    max-height: 320px;
+    height: 280px;
+    min-height: 280px;
+    max-height: 280px;
   }
 
   .change-main-oi .plot-wrap,
   .oi-wall-chart .plot-wrap {
-    height: min(220px, 34dvh);
-    min-height: 200px;
-    max-height: 260px;
+    height: 220px;
+    min-height: 220px;
+    max-height: 220px;
   }
 
   .change-map-panel {
@@ -2031,15 +2038,15 @@
   }
 
   .history-gf-heatmap .plot-wrap {
-    height: min(300px, 46dvh);
-    min-height: 260px;
-    max-height: 360px;
+    height: 300px;
+    min-height: 300px;
+    max-height: 300px;
   }
 
   .history-side-panel .plot-wrap {
-    height: min(280px, 42dvh);
-    min-height: 240px;
-    max-height: 320px;
+    height: 280px;
+    min-height: 280px;
+    max-height: 280px;
   }
 
   .board .plot-wrap .plot,
@@ -2077,26 +2084,17 @@
 
   .board-grid--triple > .panel--main,
   .board-grid--triple > .space-panel,
-  .board-grid--triple > .term-structure-panel {
-    min-height: min(480px, 58dvh);
-  }
-
+  .board-grid--triple > .term-structure-panel,
   .board-grid--triple > .change-map-panel,
-  .board-grid--triple > .history-panel {
-    min-height: auto;
-  }
-
+  .board-grid--triple > .history-panel,
   .board-grid--triple > .panel--side-top,
   .board-grid--triple > .forecast-panel,
   .board-grid--triple > .term-metrics-panel,
   .board-grid--triple > .change-movers-panel,
-  .board-grid--triple > .history-side-panel {
-    min-height: min(280px, 34dvh);
-  }
-
+  .board-grid--triple > .history-side-panel,
   .board-grid--triple > .panel--side-summary,
   .board-grid--triple > .summary-module-panel {
-    min-height: min(220px, 28dvh);
+    min-height: auto;
   }
 
   .change-map-panel .gex-change-chart,

@@ -39,6 +39,18 @@ type PlotOptions = {
   xHoverLabel?: { y: number; format: (x: number) => string };
 };
 
+/** iOS Safari 滚动时地址栏显隐会触发 window resize；Plotly responsive 会跟着改高度 */
+function pinMobilePlotSize(node: HTMLDivElement) {
+  const wrap = node.closest(".plot-wrap");
+  if (!(wrap instanceof HTMLElement)) return;
+  const width = wrap.clientWidth;
+  const height = wrap.clientHeight;
+  if (width > 0 && height > 0) {
+    node.style.width = `${width}px`;
+    node.style.height = `${height}px`;
+  }
+}
+
 export function usePlot(
   getFigure: () => { traces: unknown[]; layout: FigureLayout },
   revision: string,
@@ -55,7 +67,9 @@ export function usePlot(
 
   const resize = useCallback(() => {
     const el = ref.current;
-    if (el && window.Plotly) window.Plotly.Plots.resize(el);
+    if (!el || !window.Plotly) return;
+    if (touchScrollFriendly()) pinMobilePlotSize(el);
+    window.Plotly.Plots.resize(el);
   }, []);
 
   const applyView = (layout: FigureLayout): FigureLayout => ({
@@ -97,19 +111,21 @@ export function usePlot(
     const layout = applyView(figure.layout);
     let alive = true;
     const scrollZoom = !touchScrollFriendly();
+    const mobile = touchScrollFriendly();
     window.Plotly
       .react(plot, figure.traces as never, layout as never, {
         displayModeBar: false,
         displaylogo: false,
-        responsive: true,
+        responsive: !mobile,
         scrollZoom,
         doubleClick: false,
       })
       .then(() => {
         if (!alive || !ref.current) return;
         const node = ref.current;
-        const mobile = touchScrollFriendly();
-        if (!mobile) {
+        if (mobile) {
+          pinMobilePlotSize(node);
+        } else {
           node.style.height = "";
           node.style.width = "";
         }
@@ -192,8 +208,15 @@ export function usePlot(
     if (!el) return;
 
     if (touchScrollFriendly()) {
-      requestAnimationFrame(resize);
-      const onOrientation = () => requestAnimationFrame(resize);
+      requestAnimationFrame(() => {
+        pinMobilePlotSize(el);
+        resize();
+      });
+      const onOrientation = () =>
+        requestAnimationFrame(() => {
+          pinMobilePlotSize(el);
+          resize();
+        });
       window.addEventListener("orientationchange", onOrientation);
       return () => {
         window.removeEventListener("orientationchange", onOrientation);
